@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Step Up - Dance Studio Portal 🩰</title>
+  
+  <!-- Premium Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  
+  <!-- Apple Web App Meta Tags (Installs as App on iPhone) -->
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Step Up">
+  <link rel="apple-touch-icon" href="/logo.png">
+  
+  <!-- Core stylesheet -->
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body class="dark-mode">
+  
+  <!-- Background Ambient Glows -->
+  <div class="ambient-glow glow-1"></div>
+  <div class="ambient-glow glow-2"></div>
+  
+  <!-- 1. Passcode Screen (Gatekeeper) -->
+  <div id="auth-screen" class="auth-container active">
+    <div class="glass-card auth-card">
+      <div class="auth-header">
+        <div class="logo-badge">
+          <img src="/logo.png" alt="Dance Studio Logo" class="auth-logo-img">
+        </div>
+        <h1>Dance Studio</h1>
+        <p>Enter the passcode to view and download photos and videos.</p>
+      </div>
+      
+      <form id="login-form">
+        <div class="input-group">
+          <label for="passcode">Access Passcode</label>
+          <div class="input-wrapper">
+            <i data-lucide="key-round" class="input-icon"></i>
+            <input type="password" id="passcode" placeholder="••••••••" required autocomplete="current-password">
+            <button type="button" id="toggle-password" class="icon-btn">
+              <i data-lucide="eye" id="eye-icon"></i>
+            </button>
+          </div>
+          <span id="login-error" class="error-msg">Incorrect passcode. Please try again.</span>
+        </div>
+        
+        <button type="submit" class="primary-btn btn-full">
+          <span>Enter Portal</span>
+          <i data-lucide="arrow-right"></i>
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- 2. Main Portal Gallery -->
+  <div id="gallery-screen" class="gallery-container">
+    <!-- Navigation / Header -->
+    <header class="app-header">
+      <div class="logo">
+        <img src="/logo.png" alt="Dance Studio Logo" class="logo-img">
+        <div class="logo-text">
+          <h2>Step Up</h2>
+          <span>Dance Studio</span>
+        </div>
+      </div>
+      
+      <div class="header-actions">
+        <button id="refresh-btn" class="secondary-btn" title="Refresh files (clears cache)">
+          <i data-lucide="refresh-cw"></i>
+          <span class="btn-text">Sync Drive</span>
+        </button>
+        <button id="logout-btn" class="danger-btn" title="Log out">
+          <i data-lucide="log-out"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Controls: Search and Categories -->
+    <section class="controls-section">
+      <div class="search-bar-wrapper glass-card">
+        <i data-lucide="search" class="search-icon"></i>
+        <input type="text" id="search-input" placeholder="Search by name, date or day...">
+        <button id="clear-search" class="icon-btn hidden">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+
+      <div class="filters-container">
+        <!-- Main Format Filter -->
+        <div class="filter-group format-filters">
+          <button class="filter-tab active" data-filter="all">All Media</button>
+          <button class="filter-tab" data-filter="photo">Photos</button>
+          <button class="filter-tab" data-filter="video">Videos</button>
+        </div>
+        
+        <!-- Category/Folder Filters (dynamically populated) -->
+        <div class="filter-group category-filters" id="category-tabs">
+          <!-- Populated by JS: General, Day 1, Day 2, etc. -->
+        </div>
+      </div>
+    </section>
+
+    <!-- Media Grid -->
+    <main class="media-section">
+      <div id="loading-spinner" class="spinner-container">
+        <div class="spinner"></div>
+        <p>Syncing files from Google Drive...</p>
+      </div>
+      
+      <div id="empty-state" class="empty-container hidden">
+        <i data-lucide="folder-open" class="empty-icon"></i>
+        <h3>No media files found</h3>
+        <p>Try clearing search criteria or uploading files to Google Drive.</p>
+      </div>
+
+      <div id="media-grid" class="media-grid">
+        <!-- Media Cards dynamic injection -->
+      </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>&copy; 2026 Step Up Dance Studio. Designed for fast playback of iPhone HEIC and HEVC formats.</p>
+    </footer>
+  </div>
+
+  <!-- 3. Lightbox / Media Viewer Modal -->
+  <div id="lightbox" class="lightbox-modal">
+    <div class="lightbox-overlay"></div>
+    
+    <!-- Lightbox Close & Actions -->
+    <div class="lightbox-top-bar">
+      <div class="media-meta">
+        <span class="media-badge" id="lightbox-category">Day 1</span>
+        <h4 id="lightbox-title">Photo_1234.heic</h4>
+        <span id="lightbox-date">June 11, 2026</span>
+      </div>
+      <div class="lightbox-actions">
+        <button id="lightbox-play-direct" class="secondary-btn sm-btn hidden">
+          <i data-lucide="video"></i>
+          <span>Direct Play</span>
+        </button>
+        <a id="lightbox-download" class="secondary-btn sm-btn" href="#" download>
+          <i data-lucide="download"></i>
+          <span>Download Original</span>
+        </a>
+        <button id="lightbox-close" class="icon-btn circle-btn close-btn">
+          <i data-lucide="x"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation Buttons -->
+    <button id="lightbox-prev" class="nav-arrow prev-arrow">
+      <i data-lucide="chevron-left"></i>
+    </button>
+    <button id="lightbox-next" class="nav-arrow next-arrow">
+      <i data-lucide="chevron-right"></i>
+    </button>
+
+    <!-- Main Content Container -->
+    <div class="lightbox-content-wrapper">
+      <div class="lightbox-content">
+        <!-- Injected via JS: img or video/iframe player -->
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/app.js"></script>
+</body>
+</html>
