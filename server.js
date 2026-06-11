@@ -356,18 +356,38 @@ app.delete('/api/media/:id', requireAdmin, async (req, res) => {
   }
 
   try {
-    console.log(`[Admin] Trashing file ${fileId}`);
-    // Update trashed status (move to trash instead of permanent delete for safety)
-    await driveInstance.files.update({
+    console.log(`[Admin] Deleting (unlinking) file ${fileId}`);
+    
+    // Fetch file parents first
+    const fileMeta = await driveInstance.files.get({
       fileId: fileId,
-      resource: { trashed: true }
+      fields: 'parents'
     });
+
+    const parents = fileMeta.data.parents;
+    if (parents && parents.length > 0) {
+      // Remove the file from its parent folders.
+      // This unlinks it from the shared folder, which is allowed for Editors.
+      await driveInstance.files.update({
+        fileId: fileId,
+        removeParents: parents.join(','),
+        fields: 'id, parents'
+      });
+      console.log(`[Admin] Unlinked file ${fileId} from parents: ${parents.join(',')}`);
+    } else {
+      // If no parents, try setting trashed (fallback)
+      await driveInstance.files.update({
+        fileId: fileId,
+        resource: { trashed: true }
+      });
+      console.log(`[Admin] Trashed file ${fileId} (no parents found)`);
+    }
 
     // Clear cache
     mediaCache = null;
     cacheTime = 0;
 
-    res.json({ success: true, message: 'File moved to trash successfully' });
+    res.json({ success: true, message: 'File deleted successfully' });
   } catch (err) {
     console.error(`[Admin Error] Delete file ${fileId} failed:`, err.message);
     res.status(500).json({ error: `Failed to delete: ${err.message}. Ensure you are using a Service Account with editor permissions.` });
