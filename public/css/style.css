@@ -1089,6 +1089,43 @@ h1, h2, h3, h4, h5, h6 {
   border-color: var(--accent-danger);
 }
 
+/* Security Badge Styles */
+.security-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.18);
+  color: #34d399; /* Premium Emerald */
+  padding: 0.4rem 0.9rem;
+  border-radius: 9999px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.05);
+  transition: all 0.3s ease;
+}
+
+.security-badge:hover {
+  background: rgba(16, 185, 129, 0.12);
+  border-color: rgba(16, 185, 129, 0.3);
+  box-shadow: 0 4px 16px rgba(16, 185, 129, 0.15);
+}
+
+.security-icon {
+  width: 14px;
+  height: 14px;
+  stroke-width: 2.5px;
+}
+
+.auth-security {
+  margin-top: 1.8rem;
+  width: 100%;
+}
+
+
 /* Custom Webkit scrollbar for premium theme */
 ::-webkit-scrollbar {
   width: 10px;
