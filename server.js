@@ -6,6 +6,8 @@ const path = require('path');
 const https = require('https');
 const { drive, auth } = require('@googleapis/drive');
 const multer = require('multer');
+const crypto = require('crypto');
+const querystring = require('querystring');
 
 // Configure multer for temp uploads
 const upload = multer({ dest: path.join(__dirname, 'uploads/') });
@@ -51,6 +53,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin2026';
 
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -592,99 +595,403 @@ app.get('/api/auth/download-stats', requireAuth, (req, res) => {
   });
 });
 
-// Get UPI configuration for paywall
-app.get('/api/subscription/config', requireAuth, (req, res) => {
-  const config = readConfig();
-  res.json({
-    upiId: config.upiId || '6284048021@upi',
-    upiName: config.upiName || 'StepUp Dance Studio'
+// Instamojo API Helper Methods
+function createInstamojoPayment(amount, purpose, redirectUrl, webhookUrl) {
+  return new Promise((resolve, reject) => {
+    const apiKey = process.env.INSTAMOJO_API_KEY;
+    const authToken = process.env.INSTAMOJO_AUTH_TOKEN;
+    const isSandbox = process.env.INSTAMOJO_SANDBOX === 'true';
+
+    if (!apiKey || !authToken) {
+      return reject(new Error('Instamojo API Key or Auth Token is not configured.'));
+    }
+
+    const host = isSandbox ? 'test.instamojo.com' : 'www.instamojo.com';
+    
+    const postData = querystring.stringify({
+      amount: amount.toString(),
+      purpose: purpose,
+      redirect_url: redirectUrl,
+      webhook: webhookUrl,
+      allow_repeated_payments: 'false'
+    });
+
+    const options = {
+      hostname: host,
+      path: '/api/1.1/payment-requests/',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'Content-Length': Buffer.byteLength(postData),
+        'X-Api-Key': apiKey,
+        'X-Auth-Token': authToken
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.success && parsed.payment_request) {
+            resolve(parsed.payment_request);
+          } else {
+            reject(new Error(parsed.message ? JSON.stringify(parsed.message) : data));
+          }
+        } catch (e) {
+          reject(new Error('Failed to parse response: ' + data));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.write(postData);
+    req.end();
   });
-});
+}
 
-// Update UPI Configuration (Admin Only)
-app.post('/api/admin/config', requireAdmin, (req, res) => {
-  const { upiId, upiName } = req.body;
-  if (!upiId || !upiName) {
-    return res.status(400).json({ error: 'UPI ID and Beneficiary Name are required' });
-  }
-  
-  const config = readConfig();
-  config.upiId = upiId.trim();
-  config.upiName = upiName.trim();
-  writeConfig(config);
-  
-  res.json({ success: true, message: 'UPI configurations updated successfully' });
-});
+function verifyPaymentRequestOnInstamojo(paymentRequestId) {
+  return new Promise((resolve, reject) => {
+    const apiKey = process.env.INSTAMOJO_API_KEY;
+    const authToken = process.env.INSTAMOJO_AUTH_TOKEN;
+    const isSandbox = process.env.INSTAMOJO_SANDBOX === 'true';
 
-// Submit Payment UTR / Transaction Reference ID
-app.post('/api/subscription/submit', requireAuth, (req, res) => {
-  const { utr } = req.body;
-  if (!utr || utr.trim().length < 8) {
-    return res.status(400).json({ error: 'Please enter a valid Transaction Reference ID / UTR' });
-  }
+    if (!apiKey || !authToken) {
+      return reject(new Error('Instamojo API Key or Auth Token is not configured.'));
+    }
 
+    const host = isSandbox ? 'test.instamojo.com' : 'www.instamojo.com';
+
+    const options = {
+      hostname: host,
+      path: `/api/1.1/payment-requests/${paymentRequestId}/`,
+      method: 'GET',
+      headers: {
+        'X-Api-Key': apiKey,
+        'X-Auth-Token': authToken
+      }
+    };
+
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', chunk => data += chunk);
+      res.on('end', () => {
+        try {
+          const parsed = JSON.parse(data);
+          if (parsed.success && parsed.payment_request) {
+            resolve(parsed.payment_request);
+          } else {
+            reject(new Error(parsed.message ? JSON.stringify(parsed.message) : data));
+          }
+        } catch (e) {
+          reject(new Error('Failed to parse details: ' + data));
+        }
+      });
+    });
+
+    req.on('error', reject);
+    req.end();
+  });
+}
+
+// -------------------------------------------------------------
+// Instamojo Payment Routes
+// -------------------------------------------------------------
+
+// Create Instamojo Payment Request
+app.post('/api/payment/create', requireAuth, async (req, res) => {
   let parentSessionId = req.cookies.parent_session_id;
   if (!parentSessionId) {
     parentSessionId = Math.random().toString(36).substring(2, 15);
     res.cookie('parent_session_id', parentSessionId, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
   }
 
-  const config = readConfig();
-  
-  if (!config.subscriptions) config.subscriptions = [];
-  const exists = config.subscriptions.find(sub => sub.utr === utr.trim());
-  if (exists) {
-    return res.status(400).json({ error: 'This UTR Reference ID is already submitted and is pending verification.' });
+  try {
+    const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+    const host = req.headers['x-forwarded-host'] || req.headers.host;
+    const redirectUrl = `${protocol}://${host}/api/payment/callback`;
+    const webhookUrl = `${protocol}://${host}/api/payment/webhook`;
+
+    console.log(`[Instamojo] Creating payment request for session: ${parentSessionId}`);
+    
+    const payment = await createInstamojoPayment(99, 'StepUp Summer Camp 2026 Media Access', redirectUrl, webhookUrl);
+    
+    const config = readConfig();
+    if (!config.paymentRequests) config.paymentRequests = {};
+    config.paymentRequests[payment.id] = parentSessionId;
+
+    if (!config.subscriptions) config.subscriptions = [];
+    config.subscriptions.push({
+      id: payment.id,
+      utr: 'Pending automated verification',
+      parentSessionId: parentSessionId,
+      status: 'pending',
+      createdTime: new Date().toISOString()
+    });
+
+    writeConfig(config);
+
+    res.json({ checkoutUrl: payment.longurl });
+  } catch (err) {
+    console.error('[Instamojo Error] Payment creation failed:', err.message);
+    res.status(500).json({ error: 'Failed to create payment checkout. Check API key configurations.' });
   }
+});
 
-  config.subscriptions.push({
-    id: Math.random().toString(36).substring(2, 10).toUpperCase(),
-    utr: utr.trim(),
-    parentSessionId: parentSessionId,
-    status: 'pending',
-    createdTime: new Date().toISOString()
-  });
+// Instamojo Background Webhook
+app.post('/api/payment/webhook', async (req, res) => {
+  console.log('[Instamojo Webhook] Received webhook notification.');
 
-  writeConfig(config);
-  res.json({ success: true, message: 'Payment reference submitted successfully for verification!' });
+  try {
+    const salt = process.env.INSTAMOJO_SALT;
+    if (salt) {
+      const body = { ...req.body };
+      const mac = body.mac;
+      delete body.mac;
+
+      const sortedKeys = Object.keys(body).sort();
+      const sortedValues = sortedKeys.map(k => body[k]).join('|');
+      const calculatedMac = crypto.createHmac('sha256', salt).update(sortedValues).digest('hex');
+
+      if (calculatedMac !== mac) {
+        console.warn('[Instamojo Webhook] Webhook signature verification failed.');
+        return res.status(400).send('Invalid Signature');
+      }
+    }
+
+    const { payment_request_id, payment_id, status } = req.body;
+
+    if (status === 'Credit') {
+      console.log(`[Instamojo Webhook] Payment Successful. Request ID: ${payment_request_id}, Payment ID: ${payment_id}`);
+      
+      const config = readConfig();
+      if (!config.paymentRequests) config.paymentRequests = {};
+      const parentSessionId = config.paymentRequests[payment_request_id];
+
+      if (parentSessionId) {
+        if (!config.approvedCookies) config.approvedCookies = [];
+        if (!config.approvedCookies.includes(parentSessionId)) {
+          config.approvedCookies.push(parentSessionId);
+        }
+
+        if (!config.subscriptions) config.subscriptions = [];
+        const subIndex = config.subscriptions.findIndex(s => s.id === payment_request_id);
+        if (subIndex !== -1) {
+          config.subscriptions[subIndex].status = 'approved';
+          config.subscriptions[subIndex].utr = payment_id;
+        }
+
+        writeConfig(config);
+        console.log(`[Instamojo Webhook] Session ${parentSessionId} unlocked successfully.`);
+      } else {
+        console.warn(`[Instamojo Webhook] No matching parent session found for payment request: ${payment_request_id}`);
+      }
+    }
+
+    res.send('OK');
+  } catch (err) {
+    console.error('[Instamojo Webhook Error]:', err.message);
+    res.status(500).send('Internal Error');
+  }
+});
+
+// Instamojo Redirect Callback Landing Page
+app.get('/api/payment/callback', async (req, res) => {
+  const { payment_status, payment_request_id, payment_id } = req.query;
+
+  if (payment_status === 'Credit') {
+    const config = readConfig();
+    if (!config.paymentRequests) config.paymentRequests = {};
+    const parentSessionId = config.paymentRequests[payment_request_id];
+
+    if (parentSessionId) {
+      // Fallback: Verify payment directly with API in case webhook is delayed
+      try {
+        const details = await verifyPaymentRequestOnInstamojo(payment_request_id);
+        const isCompleted = details.status === 'Completed' || (details.payments && details.payments.some(p => p.status === 'Successful'));
+
+        if (isCompleted) {
+          if (!config.approvedCookies) config.approvedCookies = [];
+          if (!config.approvedCookies.includes(parentSessionId)) {
+            config.approvedCookies.push(parentSessionId);
+          }
+
+          if (!config.subscriptions) config.subscriptions = [];
+          const subIndex = config.subscriptions.findIndex(s => s.id === payment_request_id);
+          if (subIndex !== -1) {
+            config.subscriptions[subIndex].status = 'approved';
+            config.subscriptions[subIndex].utr = payment_id;
+          }
+
+          writeConfig(config);
+          console.log(`[Instamojo Callback] Fallback verification succeeded. Session ${parentSessionId} unlocked.`);
+        }
+      } catch (err) {
+        console.error('[Instamojo Callback] Fallback check failed:', err.message);
+      }
+    }
+
+    // Render beautiful success landing page
+    res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StepUp Dance Studio - Payment Successful</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: #080B14;
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .success-card {
+      background: rgba(17, 24, 39, 0.65);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 3rem 2rem;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 450px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .icon {
+      font-size: 4rem;
+      color: #22c55e;
+      margin-bottom: 1rem;
+      animation: scaleUp 0.5s ease-out;
+    }
+    h1 {
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      font-size: 1.8rem;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+    .redirect-text {
+      font-size: 0.85rem;
+      color: #6c63ff;
+    }
+    @keyframes scaleUp {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+  <script>
+    let count = 5;
+    function countdown() {
+      count--;
+      if (count <= 0) {
+        window.location.href = '/';
+      } else {
+        document.getElementById('countdown').innerText = count;
+        setTimeout(countdown, 1000);
+      }
+    }
+    window.onload = () => setTimeout(countdown, 1000);
+  </script>
+</head>
+<body>
+  <div class="success-card">
+    <div class="icon">✓</div>
+    <h1>Payment Successful!</h1>
+    <p>Thank you for subscribing. Your premium access has been verified and unlocked automatically. You can now download unlimited high-resolution photos and videos.</p>
+    <span class="redirect-text">Redirecting you back to the gallery in <strong id="countdown">5</strong> seconds...</span>
+  </div>
+</body>
+</html>
+    `);
+  } else {
+    // Render failed landing page
+    res.send(`
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>StepUp Dance Studio - Payment Failed</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: #080B14;
+      color: #e2e8f0;
+      font-family: 'Inter', sans-serif;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+    }
+    .failed-card {
+      background: rgba(17, 24, 39, 0.65);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      padding: 3rem 2rem;
+      border-radius: 20px;
+      text-align: center;
+      max-width: 450px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    }
+    .icon {
+      font-size: 4rem;
+      color: #ef4444;
+      margin-bottom: 1rem;
+    }
+    h1 {
+      color: #ffffff;
+      margin-bottom: 0.5rem;
+      font-size: 1.8rem;
+    }
+    p {
+      color: #94a3b8;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      margin-bottom: 1.5rem;
+    }
+    .btn {
+      display: inline-block;
+      background: #6c63ff;
+      color: white;
+      padding: 0.75rem 1.5rem;
+      text-decoration: none;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: background 0.2s;
+    }
+    .btn:hover {
+      background: #5b54e0;
+    }
+  </style>
+</head>
+<body>
+  <div class="failed-card">
+    <div class="icon">✗</div>
+    <h1>Payment Failed</h1>
+    <p>The transaction was not completed or failed. If money was debited from your account, it will be refunded automatically by your bank within 3-5 business days. Please try again.</p>
+    <a href="/" class="btn">Return to Gallery</a>
+  </div>
+</body>
+</html>
+    `);
+  }
 });
 
 // Fetch All Subscriptions (Admin Only)
 app.get('/api/admin/subscriptions', requireAdmin, (req, res) => {
   const config = readConfig();
   res.json(config.subscriptions || []);
-});
-
-// Approve / Reject Subscription (Admin Only)
-app.post('/api/admin/subscriptions/verify', requireAdmin, (req, res) => {
-  const { subId, action } = req.body; // action: 'approve' | 'delete'
-  if (!subId || !action) {
-    return res.status(400).json({ error: 'Subscription ID and action are required' });
-  }
-
-  const config = readConfig();
-  if (!config.subscriptions) config.subscriptions = [];
-
-  const subIndex = config.subscriptions.findIndex(sub => sub.id === subId);
-  if (subIndex === -1) {
-    return res.status(404).json({ error: 'Subscription not found' });
-  }
-
-  const sub = config.subscriptions[subIndex];
-
-  if (action === 'approve') {
-    sub.status = 'approved';
-    if (!config.approvedCookies) config.approvedCookies = [];
-    if (!config.approvedCookies.includes(sub.parentSessionId)) {
-      config.approvedCookies.push(sub.parentSessionId);
-    }
-  } else {
-    // Delete/reject subscription
-    config.subscriptions.splice(subIndex, 1);
-  }
-
-  writeConfig(config);
-  res.json({ success: true, message: `Subscription reference ${action}d successfully` });
 });
 
 // Catch-all route to serve Frontend index.html for client side routing

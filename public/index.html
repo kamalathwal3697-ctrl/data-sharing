@@ -604,47 +604,22 @@
         <p class="payment-note">Subscribe to unlock unlimited high-resolution downloads for all days.</p>
       </div>
 
-      <div class="payment-body">
-        <div class="qr-code-section">
-          <!-- Dynamically loaded QR Code -->
-          <div id="upi-qr-container" class="qr-container">
-            <div class="spinner"></div>
-          </div>
-          <span class="qr-caption"><i data-lucide="smartphone"></i> Scan QR with GPay, PhonePe, Paytm or any UPI App</span>
-        </div>
-
-        <div class="payment-details-box">
-          <div class="detail-row">
-            <span>Payee Name:</span>
-            <strong id="payee-name">StepUp Dance Studio</strong>
-          </div>
-          <div class="detail-row">
-            <span>UPI ID:</span>
-            <strong id="payee-upi">6284048021@upi</strong>
-          </div>
-        </div>
-
-        <!-- UTR Form -->
-        <form id="paywall-form" class="paywall-form">
-          <div class="input-group">
-            <label for="utr-input">Transaction Reference ID / UTR (12 Digits)</label>
-            <div class="input-wrapper">
-              <i data-lucide="receipt" class="input-icon"></i>
-              <input type="text" id="utr-input" placeholder="Enter UPI Ref No. from your bank app" required minlength="12" maxlength="12" pattern="\d{12}" title="Please enter 12 digit UTR number">
-            </div>
-            <span id="paywall-error" class="error-msg">Failed to submit payment. Try again.</span>
-          </div>
-
-          <button type="submit" class="primary-btn btn-full">
-            <span>Verify & Unlock Gallery</span>
-            <i data-lucide="key-round"></i>
-          </button>
-        </form>
+      <div class="payment-body" style="display: flex; flex-direction: column; gap: 1.5rem; align-items: center; padding: 1rem 0;">
+        <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 0.5rem; max-width: 320px;">
+          You will be redirected to Instamojo's secure payment gateway. Your gallery will be unlocked instantly upon successful transaction completion.
+        </p>
+        
+        <button id="pay-instamojo-btn" class="primary-btn btn-full" style="height: 52px; font-size: 1rem; display: flex; justify-content: center; align-items: center; gap: 0.5rem;">
+          <span>Pay ₹99 with Instamojo</span>
+          <i data-lucide="external-link"></i>
+        </button>
+        
+        <span id="paywall-error" class="error-msg" style="margin-top: -0.5rem; text-align: center;"></span>
       </div>
 
       <div class="security-badge auth-security">
         <i data-lucide="shield-check" class="security-icon"></i>
-        <span>100% Direct Bank Transfer</span>
+        <span>100% Secure & Automated Checkout</span>
       </div>
     </div>
   </div>
@@ -658,66 +633,34 @@
       
       <div class="settings-header">
         <h2>SaaS Admin Control Panel</h2>
-        <p>Configure bank settings and approve parent subscription transactions.</p>
+        <p>Monitor active parent subscriptions and transaction details.</p>
       </div>
 
-      <div class="settings-tabs">
-        <button class="settings-tab-btn active" data-tab="payment-config">Bank Settings</button>
-        <button class="settings-tab-btn" data-tab="subscriptions-log">Approvals Log</button>
-      </div>
-
-      <!-- Tab 1: Configure UPI -->
-      <div id="tab-payment-config" class="settings-tab-content active">
-        <form id="admin-upi-form">
-          <div class="input-group">
-            <label for="admin-upi-id">Admin UPI ID (for receiving scan payments)</label>
-            <div class="input-wrapper">
-              <i data-lucide="wallet" class="input-icon"></i>
-              <input type="text" id="admin-upi-id" placeholder="e.g. 6284048021@upi" required>
-            </div>
-          </div>
-          
-          <div class="input-group">
-            <label for="admin-upi-name">Beneficiary Name (Account Holder Name)</label>
-            <div class="input-wrapper">
-              <i data-lucide="user" class="input-icon"></i>
-              <input type="text" id="admin-upi-name" placeholder="e.g. StepUp Dance Studio" required>
-            </div>
-          </div>
-
-          <button type="submit" class="primary-btn btn-full">
-            <span>Save Configurations</span>
-            <i data-lucide="save"></i>
-          </button>
-        </form>
-      </div>
-
-      <!-- Tab 2: Approve Subscriptions Log -->
-      <div id="tab-subscriptions-log" class="settings-tab-content">
-        <div class="subscriber-log-wrapper">
-          <div id="sub-loading" class="spinner-container sm-spinner">
-            <div class="spinner"></div>
-            <p>Loading transactions...</p>
-          </div>
-          <div id="sub-empty" class="empty-log hidden">
-            <i data-lucide="check-circle" style="color:var(--accent-success); width:32px; height:32px; margin-bottom:0.5rem;"></i>
-            <p>No pending approvals. All caught up!</p>
-          </div>
-          
-          <div class="table-responsive">
-            <table class="subscriber-table hidden" id="subscriber-table">
-              <thead>
-                <tr>
-                  <th>UTR Reference ID</th>
-                  <th>Parent Session</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody id="subscriber-log-list">
-                <!-- Dynamically populated rows -->
-              </tbody>
-            </table>
-          </div>
+      <div class="subscriber-log-wrapper" style="margin-top: 1rem;">
+        <div id="sub-loading" class="spinner-container sm-spinner">
+          <div class="spinner"></div>
+          <p>Loading transactions...</p>
+        </div>
+        <div id="sub-empty" class="empty-log hidden">
+          <i data-lucide="info" style="color:var(--accent-primary); width:32px; height:32px; margin-bottom:0.5rem;"></i>
+          <p>No subscriptions found yet.</p>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="subscriber-table hidden" id="subscriber-table">
+            <thead>
+              <tr>
+                <th>Payment Request ID</th>
+                <th>Transaction ID</th>
+                <th>Session ID</th>
+                <th>Status</th>
+                <th>Date</th>
+              </tr>
+            </thead>
+            <tbody id="subscriber-log-list">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
         </div>
       </div>
     </div>

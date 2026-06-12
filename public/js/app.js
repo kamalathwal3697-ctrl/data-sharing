@@ -75,11 +75,6 @@ const lightboxPlayDirect = document.getElementById('lightbox-play-direct');
 // Paywall Modal Elements
 const paywallModal = document.getElementById('paywall-modal');
 const closePaywallBtn = document.getElementById('close-paywall-btn');
-const upiQrContainer = document.getElementById('upi-qr-container');
-const payeeNameText = document.getElementById('payee-name');
-const payeeUpiText = document.getElementById('payee-upi');
-const paywallForm = document.getElementById('paywall-form');
-const utrInput = document.getElementById('utr-input');
 const paywallError = document.getElementById('paywall-error');
 const downloadLimitBar = document.getElementById('download-limit-bar');
 const limitBarText = document.getElementById('limit-bar-text');
@@ -88,9 +83,6 @@ const limitBarText = document.getElementById('limit-bar-text');
 const adminSettingsBtn = document.getElementById('admin-settings-btn');
 const adminSettingsModal = document.getElementById('admin-settings-modal');
 const closeSettingsBtn = document.getElementById('close-settings-btn');
-const adminUpiForm = document.getElementById('admin-upi-form');
-const adminUpiIdInput = document.getElementById('admin-upi-id');
-const adminUpiNameInput = document.getElementById('admin-upi-name');
 const subscriberLogList = document.getElementById('subscriber-log-list');
 const subLoading = document.getElementById('sub-loading');
 const subEmpty = document.getElementById('sub-empty');
@@ -331,33 +323,37 @@ function setupEventListeners() {
     paywallModal.classList.remove('active');
   });
 
-  // Paywall Form Submit (UTR/Transaction confirmation code)
-  paywallForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const utr = utrInput.value.trim();
-    
-    try {
-      const response = await fetch('/api/subscription/submit', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ utr })
-      });
-      const data = await response.json();
+  // Paywall Instamojo redirect trigger
+  const payInstamojoBtn = document.getElementById('pay-instamojo-btn');
+  if (payInstamojoBtn) {
+    payInstamojoBtn.addEventListener('click', async () => {
+      payInstamojoBtn.disabled = true;
+      const btnSpan = payInstamojoBtn.querySelector('span');
+      const originalText = btnSpan ? btnSpan.textContent : 'Pay ₹99 with Instamojo';
+      if (btnSpan) btnSpan.textContent = 'Opening Secure Gateway...';
+      paywallError.classList.remove('active');
       
-      if (response.ok && data.success) {
-        showToast('UTR submitted successfully! Administrator verification in progress.', 'success');
-        paywallModal.classList.remove('active');
-        utrInput.value = '';
-        checkDownloadLimits();
-      } else {
-        paywallError.textContent = data.error || 'Failed to submit reference ID.';
+      try {
+        const response = await fetch('/api/payment/create', { method: 'POST' });
+        const data = await response.json();
+        
+        if (response.ok && data.checkoutUrl) {
+          showToast('Redirecting to secure payment checkout...', 'info');
+          window.location.href = data.checkoutUrl;
+        } else {
+          paywallError.textContent = data.error || 'Failed to initialize Instamojo payment request.';
+          paywallError.classList.add('active');
+          payInstamojoBtn.disabled = false;
+          if (btnSpan) btnSpan.textContent = originalText;
+        }
+      } catch(err) {
+        paywallError.textContent = 'Network error contacting checkout services.';
         paywallError.classList.add('active');
+        payInstamojoBtn.disabled = false;
+        if (btnSpan) btnSpan.textContent = originalText;
       }
-    } catch(err) {
-      paywallError.textContent = 'Error submitting verification ID. Check connection.';
-      paywallError.classList.add('active');
-    }
-  });
+    });
+  }
 
   // Watch highlights CTA button triggers first video in gallery or plays a mock trailer
   const watchHighlightsBtn = document.getElementById('watch-highlights-btn');
@@ -393,55 +389,14 @@ function setupEventListeners() {
     });
   });
 
-  // Admin settings tab switching controls
-  document.querySelectorAll('.settings-tab-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.remove('active'));
-      
-      btn.classList.add('active');
-      const tabId = 'tab-' + btn.getAttribute('data-tab');
-      document.getElementById(tabId).classList.add('active');
-      
-      if (btn.getAttribute('data-tab') === 'subscriptions-log') {
-        loadSubscribersApprovals();
-      }
-    });
-  });
-
   // Admin settings toggler
   adminSettingsBtn.addEventListener('click', () => {
     adminSettingsModal.classList.add('active');
-    loadAdminUpiConfig();
+    loadSubscribersApprovals();
   });
 
   closeSettingsBtn.addEventListener('click', () => {
     adminSettingsModal.classList.remove('active');
-  });
-
-  // Admin Settings UPI Submit Form
-  adminUpiForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const upiId = adminUpiIdInput.value.trim();
-    const upiName = adminUpiNameInput.value.trim();
-    
-    try {
-      const response = await fetch('/api/admin/config', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ upiId, upiName })
-      });
-      const data = await response.json();
-      
-      if (response.ok && data.success) {
-        showToast('UPI banking configurations updated successfully!', 'success');
-        adminSettingsModal.classList.remove('active');
-      } else {
-        showToast(data.error || 'Failed to save bank settings.', 'error');
-      }
-    } catch(err) {
-      showToast('Connection error updating settings.', 'error');
-    }
   });
 }
 
@@ -972,30 +927,13 @@ function triggerFileDownload(fileId) {
 // Load and render paywall modal prefilled with dynamic QR code pointing to admin's bank UPI ID
 async function openPaywallModal(limitType) {
   paywallModal.classList.add('active');
-  upiQrContainer.innerHTML = '<div class="spinner"></div>';
-  
-  try {
-    const response = await fetch('/api/subscription/config');
-    const data = await response.json();
-    
-    const upiId = data.upiId || '6284048021@upi';
-    const payeeName = data.upiName || 'StepUp Dance Studio';
-    
-    payeeNameText.textContent = payeeName;
-    payeeUpiText.textContent = upiId;
-    
-    // Create direct UPI deep link
-    // Scan triggers a ₹99 payment request prefilled to payeeName and upiId
-    const upiLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=99&cu=INR&tn=${encodeURIComponent('StepUp Camp Gallery Subscription')}`;
-    
-    // Generate QR using Google/QRServer charts API
-    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiLink)}&color=080b14`;
-    
-    upiQrContainer.innerHTML = `<img src="${qrUrl}" alt="Scan QR Code to Pay ₹99">`;
-    
-  } catch(err) {
-    upiQrContainer.innerHTML = '<p style="color:var(--accent-danger); font-size:0.85rem;">Failed to generate payment QR. Scan details manually.</p>';
+  const payInstamojoBtn = document.getElementById('pay-instamojo-btn');
+  if (payInstamojoBtn) {
+    payInstamojoBtn.disabled = false;
+    const btnSpan = payInstamojoBtn.querySelector('span');
+    if (btnSpan) btnSpan.textContent = 'Pay ₹99 with Instamojo';
   }
+  paywallError.classList.remove('active');
 }
 
 // Fetch and display active download limit counts in dashboard indicator bar
@@ -1145,19 +1083,7 @@ function populateScrollerCollageWall() {
   injectTrack(track2, list2);
 }
 
-// Load configurations in admin setting panel
-async function loadAdminUpiConfig() {
-  try {
-    const response = await fetch('/api/subscription/config');
-    const data = await response.json();
-    adminUpiIdInput.value = data.upiId || '';
-    adminUpiNameInput.value = data.upiName || '';
-  } catch(err) {
-    console.error('Failed to load admin upi configuration:', err);
-  }
-}
-
-// Load subscriber approvals log lists
+// Load automated subscriber transaction log lists
 async function loadSubscribersApprovals() {
   subLoading.classList.remove('hidden');
   subEmpty.classList.add('hidden');
@@ -1170,29 +1096,30 @@ async function loadSubscribersApprovals() {
     
     subLoading.classList.add('hidden');
     
-    // Filter out only pending verification
-    const pendings = data.filter(sub => sub.status === 'pending');
-    
-    if (pendings.length === 0) {
+    if (data.length === 0) {
       subEmpty.classList.remove('hidden');
       return;
     }
     
     subscriberTable.classList.remove('hidden');
     
-    pendings.forEach(sub => {
+    // Sort by createdTime desc
+    data.sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime));
+    
+    data.forEach(sub => {
       const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td style="font-weight:700; color:var(--text-bright);">${sub.utr}</td>
-        <td style="color:var(--text-muted);">${sub.parentSessionId.substring(0, 8)}...</td>
-        <td style="display:flex; gap:0.5rem;">
-          <button class="primary-btn sm-btn approve-btn" data-id="${sub.id}" style="padding:0.4rem 0.8rem; background:var(--accent-success); box-shadow:none;">Approve</button>
-          <button class="danger-btn sm-btn reject-btn" data-id="${sub.id}" style="padding:0.4rem 0.8rem; box-shadow:none;">Reject</button>
-        </td>
-      `;
+      const isApproved = sub.status === 'approved';
+      const statusColor = isApproved ? 'var(--accent-success)' : 'var(--accent-secondary)';
+      const statusText = isApproved ? 'Approved ✓' : 'Pending';
+      const dateText = sub.createdTime ? new Date(sub.createdTime).toLocaleDateString() : 'N/A';
       
-      tr.querySelector('.approve-btn').addEventListener('click', () => verifySubscription(sub.id, 'approve'));
-      tr.querySelector('.reject-btn').addEventListener('click', () => verifySubscription(sub.id, 'delete'));
+      tr.innerHTML = `
+        <td style="font-family:monospace; font-size:0.8rem; color:var(--text-bright);">${sub.id}</td>
+        <td style="font-family:monospace; font-size:0.8rem; color:var(--text-main);">${sub.utr || '—'}</td>
+        <td style="font-family:monospace; font-size:0.8rem; color:var(--text-muted);">${sub.parentSessionId ? sub.parentSessionId.substring(0, 8) + '...' : '—'}</td>
+        <td style="font-weight:600; color:${statusColor};">${statusText}</td>
+        <td style="font-size:0.85rem; color:var(--text-muted);">${dateText}</td>
+      `;
       
       subscriberLogList.appendChild(tr);
     });
@@ -1201,28 +1128,6 @@ async function loadSubscribersApprovals() {
     subLoading.classList.add('hidden');
     subEmpty.classList.remove('hidden');
     subEmpty.innerHTML = '<p style="color:var(--accent-danger);">Connection failure loading logs.</p>';
-  }
-}
-
-// Approve / Reject UTR payment verification references
-async function verifySubscription(subId, action) {
-  try {
-    const response = await fetch('/api/admin/subscriptions/verify', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ subId, action })
-    });
-    const data = await response.json();
-    
-    if (response.ok && data.success) {
-      showToast(`Subscription reference ${action}d successfully!`, 'success');
-      loadSubscribersApprovals();
-      checkDownloadLimits();
-    } else {
-      showToast(data.error || 'Operation failed.', 'error');
-    }
-  } catch(err) {
-    showToast('Failed to connect to verification services.', 'error');
   }
 }
 
