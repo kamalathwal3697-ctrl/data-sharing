@@ -2,6 +2,13 @@
 // Frontend Logic: StepUp Dance Studio SaaS Media Portal
 // -------------------------------------------------------------
 
+function checkIsVideo(file) {
+  if (!file) return false;
+  const mime = file.mimeType || '';
+  const name = file.name || '';
+  return mime.startsWith('video/') || /\.(mp4|mov|m4v|avi|webm|qt|3gp|mkv|hevc)$/i.test(name);
+}
+
 // Application State
 let state = {
   authenticated: false,
@@ -10,6 +17,11 @@ let state = {
   filteredMedia: [],
   favorites: [],
   currentMediaIndex: -1,
+  downloadStats: {
+    isSubscribed: false,
+    photosLeft: 3,
+    videosLeft: 3
+  },
   filters: {
     format: 'all',     // 'all' | 'photo' | 'video' | 'favorite'
     category: 'all',   // 'all' | folder name
@@ -53,11 +65,36 @@ const lightboxTitle = document.getElementById('lightbox-title');
 const lightboxCategory = document.getElementById('lightbox-category');
 const lightboxDate = document.getElementById('lightbox-date');
 const lightboxDownload = document.getElementById('lightbox-download');
+const lightboxDownloadTrigger = document.getElementById('lightbox-download-trigger');
 const lightboxContent = document.querySelector('.lightbox-content');
 const lightboxClose = document.getElementById('lightbox-close');
 const lightboxPrev = document.getElementById('lightbox-prev');
 const lightboxNext = document.getElementById('lightbox-next');
 const lightboxPlayDirect = document.getElementById('lightbox-play-direct');
+
+// Paywall Modal Elements
+const paywallModal = document.getElementById('paywall-modal');
+const closePaywallBtn = document.getElementById('close-paywall-btn');
+const upiQrContainer = document.getElementById('upi-qr-container');
+const payeeNameText = document.getElementById('payee-name');
+const payeeUpiText = document.getElementById('payee-upi');
+const paywallForm = document.getElementById('paywall-form');
+const utrInput = document.getElementById('utr-input');
+const paywallError = document.getElementById('paywall-error');
+const downloadLimitBar = document.getElementById('download-limit-bar');
+const limitBarText = document.getElementById('limit-bar-text');
+
+// Admin Settings Modal Elements
+const adminSettingsBtn = document.getElementById('admin-settings-btn');
+const adminSettingsModal = document.getElementById('admin-settings-modal');
+const closeSettingsBtn = document.getElementById('close-settings-btn');
+const adminUpiForm = document.getElementById('admin-upi-form');
+const adminUpiIdInput = document.getElementById('admin-upi-id');
+const adminUpiNameInput = document.getElementById('admin-upi-name');
+const subscriberLogList = document.getElementById('subscriber-log-list');
+const subLoading = document.getElementById('sub-loading');
+const subEmpty = document.getElementById('sub-empty');
+const subscriberTable = document.getElementById('subscriber-table');
 
 // Initial Setup on Load
 document.addEventListener('DOMContentLoaded', () => {
@@ -146,7 +183,7 @@ function setupEventListeners() {
   // Drag-and-Drop window listeners (Admins only get active drop zone overlays)
   window.addEventListener('dragenter', (e) => {
     e.preventDefault();
-    if (state.authenticated) {
+    if (state.authenticated && state.isAdmin) {
       const activeCategory = state.filters.category === 'all' ? 'General' : state.filters.category;
       targetFolderDesc.textContent = `Files will be added directly to: ${activeCategory}`;
       dragOverlay.classList.add('active');
@@ -159,7 +196,6 @@ function setupEventListeners() {
 
   dragOverlay.addEventListener('dragleave', (e) => {
     e.preventDefault();
-    // Verify leaving dropzone boundary
     if (e.relatedTarget === null) {
       dragOverlay.classList.remove('active');
     }
@@ -245,14 +281,13 @@ function setupEventListeners() {
       const file = state.filteredMedia[state.currentMediaIndex];
       if (file) {
         toggleFavorite(file.id);
-        // Refresh active state immediately in lightbox
         const isFav = state.favorites.includes(file.id);
         lightboxFavBtn.classList.toggle('active', isFav);
         const lightboxHeartIcon = document.getElementById('lightbox-heart-icon');
         if (lightboxHeartIcon) {
           if (isFav) {
-            lightboxHeartIcon.style.fill = '#ff4d6d';
-            lightboxHeartIcon.style.color = '#ff4d6d';
+            lightboxHeartIcon.style.fill = '#ff5e7a';
+            lightboxHeartIcon.style.color = '#ff5e7a';
           } else {
             lightboxHeartIcon.style.fill = 'none';
             lightboxHeartIcon.style.color = 'currentColor';
@@ -274,12 +309,139 @@ function setupEventListeners() {
     });
   }
 
+  // Lightbox Download Button (gates via Paywall checks)
+  lightboxDownloadTrigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const file = state.filteredMedia[state.currentMediaIndex];
+    if (file) {
+      verifyAndTriggerDownload(file.id, file.name, checkIsVideo(file));
+    }
+  });
+
   // Keyboard Navigation for Lightbox & Portal
   document.addEventListener('keydown', (e) => {
     if (!lightbox.classList.contains('active')) return;
     if (e.key === 'Escape') closeLightbox();
     if (e.key === 'ArrowLeft') navigateLightbox(-1);
     if (e.key === 'ArrowRight') navigateLightbox(1);
+  });
+
+  // Paywall Modal Close
+  closePaywallBtn.addEventListener('click', () => {
+    paywallModal.classList.remove('active');
+  });
+
+  // Paywall Form Submit (UTR/Transaction confirmation code)
+  paywallForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const utr = utrInput.value.trim();
+    
+    try {
+      const response = await fetch('/api/subscription/submit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ utr })
+      });
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        showToast('UTR submitted successfully! Administrator verification in progress.', 'success');
+        paywallModal.classList.remove('active');
+        utrInput.value = '';
+        checkDownloadLimits();
+      } else {
+        paywallError.textContent = data.error || 'Failed to submit reference ID.';
+        paywallError.classList.add('active');
+      }
+    } catch(err) {
+      paywallError.textContent = 'Error submitting verification ID. Check connection.';
+      paywallError.classList.add('active');
+    }
+  });
+
+  // Watch highlights CTA button triggers first video in gallery or plays a mock trailer
+  const watchHighlightsBtn = document.getElementById('watch-highlights-btn');
+  if (watchHighlightsBtn) {
+    watchHighlightsBtn.addEventListener('click', () => {
+      const videos = state.allMedia.filter(item => checkIsVideo(item));
+      if (videos.length > 0) {
+        // Find index of first video in filtered list
+        const filteredIndex = state.filteredMedia.findIndex(item => item.id === videos[0].id);
+        if (filteredIndex !== -1) {
+          openLightbox(filteredIndex);
+        } else {
+          showToast('Highlight video files are sync-loading. Try again shortly.', 'info');
+        }
+      } else {
+        showToast('No videos uploaded from camp activities yet.', 'info');
+      }
+    });
+  }
+
+  // Bind Download Center package requests
+  document.querySelectorAll('.dl-package-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const type = btn.getAttribute('data-type');
+      if (type === 'all-photos') {
+        verifyAndTriggerDownload('photos-zip-archive', 'All-Photos.zip', false);
+      } else if (type === 'all-videos') {
+        verifyAndTriggerDownload('videos-zip-archive', 'All-Videos.zip', true);
+      } else if (type === 'day-wise') {
+        const activeCategory = state.filters.category === 'all' ? 'General' : state.filters.category;
+        verifyAndTriggerDownload(`album-${activeCategory}-archive`, `${activeCategory}-Album.zip`, false);
+      }
+    });
+  });
+
+  // Admin settings tab switching controls
+  document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.settings-tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.settings-tab-content').forEach(c => c.classList.remove('active'));
+      
+      btn.classList.add('active');
+      const tabId = 'tab-' + btn.getAttribute('data-tab');
+      document.getElementById(tabId).classList.add('active');
+      
+      if (btn.getAttribute('data-tab') === 'subscriptions-log') {
+        loadSubscribersApprovals();
+      }
+    });
+  });
+
+  // Admin settings toggler
+  adminSettingsBtn.addEventListener('click', () => {
+    adminSettingsModal.classList.add('active');
+    loadAdminUpiConfig();
+  });
+
+  closeSettingsBtn.addEventListener('click', () => {
+    adminSettingsModal.classList.remove('active');
+  });
+
+  // Admin Settings UPI Submit Form
+  adminUpiForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const upiId = adminUpiIdInput.value.trim();
+    const upiName = adminUpiNameInput.value.trim();
+    
+    try {
+      const response = await fetch('/api/admin/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ upiId, upiName })
+      });
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        showToast('UPI banking configurations updated successfully!', 'success');
+        adminSettingsModal.classList.remove('active');
+      } else {
+        showToast(data.error || 'Failed to save bank settings.', 'error');
+      }
+    } catch(err) {
+      showToast('Connection error updating settings.', 'error');
+    }
   });
 }
 
@@ -317,11 +479,13 @@ function showScreen(screen) {
       if (descText) descText.textContent = 'Admin Mode 🛠️';
       if (avatarInitials) avatarInitials.textContent = 'AD';
       if (headerUploadBtn) headerUploadBtn.classList.remove('hidden');
+      if (adminSettingsBtn) adminSettingsBtn.classList.remove('hidden');
     } else {
       if (roleText) roleText.textContent = 'Parent User';
       if (descText) descText.textContent = 'Parent Access';
       if (avatarInitials) avatarInitials.textContent = 'PA';
       if (headerUploadBtn) headerUploadBtn.classList.add('hidden');
+      if (adminSettingsBtn) adminSettingsBtn.classList.add('hidden');
     }
   } else {
     galleryScreen.classList.remove('active');
@@ -383,6 +547,8 @@ async function loadMedia() {
     renderStats();
     buildCategoryTabs();
     applyFilters();
+    checkDownloadLimits();
+    populateScrollerCollageWall();
   } catch (err) {
     console.error('Error loading media:', err);
     mediaGrid.innerHTML = `<p class="error-msg active" style="grid-column: 1/-1; text-align: center;">Error connecting to Google Drive. Check configuration.</p>`;
@@ -404,8 +570,8 @@ function showLoader(show) {
 
 // Compute & Render statistics in Hero Section
 function renderStats() {
-  const photosCount = state.allMedia.filter(item => item.mimeType.startsWith('image/')).length;
-  const videosCount = state.allMedia.filter(item => item.mimeType.startsWith('video/')).length;
+  const videosCount = state.allMedia.filter(item => checkIsVideo(item)).length;
+  const photosCount = state.allMedia.length - videosCount;
   const uniqueDays = new Set(state.allMedia.map(item => item.category).filter(c => c !== 'General')).size;
   const totalBytes = state.allMedia.reduce((sum, item) => sum + (item.size || 0), 0);
   
@@ -436,7 +602,6 @@ function buildCategoryTabs() {
   
   categoryTabsContainer.innerHTML = '';
   
-  // Add master Day filter tab
   const allTabs = ['all', ...categories];
   
   allTabs.forEach(cat => {
@@ -470,8 +635,7 @@ function applyFilters() {
   const { format, category, search } = state.filters;
   
   state.filteredMedia = state.allMedia.filter(item => {
-    // 1. Format Filter
-    const isVideo = item.mimeType.startsWith('video/');
+    const isVideo = checkIsVideo(item);
     if (format === 'photo' && isVideo) return false;
     if (format === 'video' && !isVideo) return false;
     if (format === 'favorite') {
@@ -479,10 +643,8 @@ function applyFilters() {
       if (!isFav) return false;
     }
     
-    // 2. Category Filter
     if (category !== 'all' && item.category !== category) return false;
     
-    // 3. Search Filter
     if (search) {
       const nameMatch = item.name.toLowerCase().includes(search);
       const catMatch = item.category.toLowerCase().includes(search);
@@ -518,7 +680,7 @@ function formatDate(isoString) {
   });
 }
 
-// Render dynamic card items in responsive Masonry grid
+// Render dynamic card items in responsive Pinterest-style Masonry grid
 function renderGrid() {
   mediaGrid.innerHTML = '';
   
@@ -532,7 +694,7 @@ function renderGrid() {
   mediaGrid.classList.remove('hidden');
   
   state.filteredMedia.forEach((file, index) => {
-    const isVideo = file.mimeType.startsWith('video/');
+    const isVideo = checkIsVideo(file);
     const card = document.createElement('div');
     card.className = `media-card ${isVideo ? 'is-video' : 'is-photo'}`;
     card.setAttribute('data-id', file.id);
@@ -592,6 +754,9 @@ function renderGrid() {
           <button class="card-action-btn share-btn" title="Copy Direct URL" onclick="event.stopPropagation();">
             <i data-lucide="share-2"></i>
           </button>
+          <button class="card-action-btn card-download-btn" title="Download to device" onclick="event.stopPropagation();">
+            <i data-lucide="download"></i>
+          </button>
           ${adminControlsHtml}
         </div>
         
@@ -623,6 +788,12 @@ function renderGrid() {
       shareMedia(file.id, file.name);
     });
     
+    const cardDownloadBtn = card.querySelector('.card-download-btn');
+    cardDownloadBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      verifyAndTriggerDownload(file.id, file.name, isVideo);
+    });
+    
     if (state.isAdmin) {
       card.querySelector('.edit-btn').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -652,12 +823,10 @@ function toggleFavorite(fileId) {
   }
   localStorage.setItem('stepup_favorites', JSON.stringify(state.favorites));
   
-  // Sync immediate button states in the grid
   document.querySelectorAll(`.favorite-btn[data-id="${fileId}"]`).forEach(btn => {
     btn.classList.toggle('active', index === -1);
   });
   
-  // Re-apply if looking at favorites
   if (state.filters.format === 'favorite') {
     applyFilters();
   }
@@ -678,6 +847,196 @@ function shareMedia(fileId, fileName) {
     document.body.removeChild(el);
     showToast(`Download link for "${fileName}" copied to clipboard! 🔗`, 'success');
   });
+}
+
+// Verify download limits before triggering download file stream
+async function verifyAndTriggerDownload(fileId, fileName, isVideo) {
+  if (state.isAdmin) {
+    triggerFileDownload(fileId);
+    return;
+  }
+  
+  // Load local downloads registry
+  let localDownloads = JSON.parse(localStorage.getItem('stepup_downloads') || '{"photos":[], "videos":[]}');
+  if (!localDownloads.photos) localDownloads.photos = [];
+  if (!localDownloads.videos) localDownloads.videos = [];
+  
+  const isArchive = fileId === 'photos-zip-archive' || fileId === 'videos-zip-archive' || fileId.startsWith('album-');
+  
+  // Check stats from server first
+  try {
+    const response = await fetch('/api/auth/download-stats');
+    const data = await response.json();
+    
+    if (data.isSubscribed) {
+      if (isArchive) {
+        showToast('Archive packaging request submitted! We will notify you when it is ready.', 'success');
+        return;
+      }
+      triggerFileDownload(fileId);
+      return;
+    }
+    
+    // Gating check for archives: unsubscribed users cannot download archives
+    if (isArchive) {
+      openPaywallModal(isVideo ? 'video' : 'photo');
+      return;
+    }
+    
+    const isDownloadedAlready = isVideo 
+      ? localDownloads.videos.includes(fileId) 
+      : localDownloads.photos.includes(fileId);
+      
+    if (!isDownloadedAlready) {
+      if (isVideo) {
+        if (data.videosLeft <= 0 || localDownloads.videos.length >= 3) {
+          openPaywallModal('video');
+          return;
+        }
+      } else {
+        if (data.photosLeft <= 0 || localDownloads.photos.length >= 3) {
+          openPaywallModal('photo');
+          return;
+        }
+      }
+    }
+    
+    // We have limit space left or it was already downloaded, trigger download
+    triggerFileDownload(fileId);
+    
+    // Register the file ID locally if it's new
+    if (!isDownloadedAlready) {
+      if (isVideo) {
+        localDownloads.videos.push(fileId);
+      } else {
+        localDownloads.photos.push(fileId);
+      }
+      localStorage.setItem('stepup_downloads', JSON.stringify(localDownloads));
+    }
+    
+    // Refresh limits bar after download triggers (delay to let stream register)
+    setTimeout(checkDownloadLimits, 1500);
+    
+  } catch(err) {
+    console.error('Error fetching download stats, falling back to local verification:', err);
+    // Gating check for archives: unsubscribed users cannot download archives
+    if (isArchive) {
+      openPaywallModal(isVideo ? 'video' : 'photo');
+      return;
+    }
+    
+    const isDownloadedAlready = isVideo 
+      ? localDownloads.videos.includes(fileId) 
+      : localDownloads.photos.includes(fileId);
+      
+    if (!isDownloadedAlready) {
+      if (isVideo) {
+        if (localDownloads.videos.length >= 3) {
+          openPaywallModal('video');
+          return;
+        }
+      } else {
+        if (localDownloads.photos.length >= 3) {
+          openPaywallModal('photo');
+          return;
+        }
+      }
+    }
+    
+    triggerFileDownload(fileId);
+    
+    if (!isDownloadedAlready) {
+      if (isVideo) {
+        localDownloads.videos.push(fileId);
+      } else {
+        localDownloads.photos.push(fileId);
+      }
+      localStorage.setItem('stepup_downloads', JSON.stringify(localDownloads));
+    }
+  }
+}
+
+// Triggers actual file download stream
+function triggerFileDownload(fileId) {
+  // If download trigger is called inside lightbox, we execute click on the hidden downloader
+  const downloadLink = document.getElementById('lightbox-download');
+  if (downloadLink) {
+    downloadLink.href = `/api/media/download/${fileId}`;
+    downloadLink.click();
+    showToast('Download started...', 'success');
+  } else {
+    window.location.href = `/api/media/download/${fileId}`;
+  }
+}
+
+// Load and render paywall modal prefilled with dynamic QR code pointing to admin's bank UPI ID
+async function openPaywallModal(limitType) {
+  paywallModal.classList.add('active');
+  upiQrContainer.innerHTML = '<div class="spinner"></div>';
+  
+  try {
+    const response = await fetch('/api/subscription/config');
+    const data = await response.json();
+    
+    const upiId = data.upiId || '6284048021@upi';
+    const payeeName = data.upiName || 'StepUp Dance Studio';
+    
+    payeeNameText.textContent = payeeName;
+    payeeUpiText.textContent = upiId;
+    
+    // Create direct UPI deep link
+    // Scan triggers a ₹99 payment request prefilled to payeeName and upiId
+    const upiLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=99&cu=INR&tn=${encodeURIComponent('StepUp Camp Gallery Subscription')}`;
+    
+    // Generate QR using Google/QRServer charts API
+    const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(upiLink)}&color=080b14`;
+    
+    upiQrContainer.innerHTML = `<img src="${qrUrl}" alt="Scan QR Code to Pay ₹99">`;
+    
+  } catch(err) {
+    upiQrContainer.innerHTML = '<p style="color:var(--accent-danger); font-size:0.85rem;">Failed to generate payment QR. Scan details manually.</p>';
+  }
+}
+
+// Fetch and display active download limit counts in dashboard indicator bar
+async function checkDownloadLimits() {
+  if (state.isAdmin) {
+    downloadLimitBar.classList.add('hidden');
+    return;
+  }
+  
+  // Load local downloads registry
+  let localDownloads = JSON.parse(localStorage.getItem('stepup_downloads') || '{"photos":[], "videos":[]}');
+  if (!localDownloads.photos) localDownloads.photos = [];
+  if (!localDownloads.videos) localDownloads.videos = [];
+  
+  try {
+    const response = await fetch('/api/auth/download-stats');
+    const data = await response.json();
+    state.downloadStats = data;
+    
+    if (data.isSubscribed) {
+      downloadLimitBar.classList.add('hidden');
+      // Update dropdown label to show subscribed
+      const descText = document.getElementById('dropdown-user-desc');
+      if (descText) descText.textContent = 'Premium Access 👑';
+    } else {
+      downloadLimitBar.classList.remove('hidden');
+      
+      // Compute remaining limits conservatively
+      const photosLeft = Math.max(0, Math.min(data.photosLeft, 3 - localDownloads.photos.length));
+      const videosLeft = Math.max(0, Math.min(data.videosLeft, 3 - localDownloads.videos.length));
+      
+      limitBarText.textContent = `Free downloads remaining: ${photosLeft} photos, ${videosLeft} videos. Subscribe for ₹99 to unlock unlimited downloads!`;
+    }
+  } catch(err) {
+    console.error('Error fetching download stats:', err);
+    // Offline / error fallback using local storage only
+    downloadLimitBar.classList.remove('hidden');
+    const photosLeft = Math.max(0, 3 - localDownloads.photos.length);
+    const videosLeft = Math.max(0, 3 - localDownloads.videos.length);
+    limitBarText.textContent = `Free downloads remaining: ${photosLeft} photos, ${videosLeft} videos. Subscribe for ₹99 to unlock unlimited downloads!`;
+  }
 }
 
 // Drag and Drop files upload handlers (Sequential XHR with progress computations)
@@ -745,6 +1104,128 @@ function uploadSingleFile(file, callback) {
   xhr.send(formData);
 }
 
+// Populate Auto-Scrolling Wall with random photos from Drive
+function populateScrollerCollageWall() {
+  const track1 = document.getElementById('wall-track-1');
+  const track2 = document.getElementById('wall-track-2');
+  
+  if (!track1 || !track2) return;
+  
+  // Filter photos
+  const photos = state.allMedia.filter(item => !checkIsVideo(item));
+  if (photos.length < 4) return;
+  
+  // Generate random lists
+  const list1 = [...photos].sort(() => 0.5 - Math.random()).slice(0, 10);
+  const list2 = [...photos].sort(() => 0.5 - Math.random()).slice(0, 10);
+  
+  // Inject into tracks (duplicate elements to ensure smooth continuous scrolling loops)
+  const injectTrack = (track, list) => {
+    track.innerHTML = '';
+    // Double array to make scroll loop seamless
+    const doubleList = [...list, ...list];
+    doubleList.forEach(file => {
+      const img = document.createElement('img');
+      img.src = `/api/media/preview/${file.id}`;
+      img.className = 'wall-img';
+      img.alt = 'Camp Memory';
+      img.loading = 'lazy';
+      // Clicking collage opens lightbox
+      img.addEventListener('click', () => {
+        const index = state.filteredMedia.findIndex(item => item.id === file.id);
+        if (index !== -1) {
+          openLightbox(index);
+        }
+      });
+      track.appendChild(img);
+    });
+  };
+  
+  injectTrack(track1, list1);
+  injectTrack(track2, list2);
+}
+
+// Load configurations in admin setting panel
+async function loadAdminUpiConfig() {
+  try {
+    const response = await fetch('/api/subscription/config');
+    const data = await response.json();
+    adminUpiIdInput.value = data.upiId || '';
+    adminUpiNameInput.value = data.upiName || '';
+  } catch(err) {
+    console.error('Failed to load admin upi configuration:', err);
+  }
+}
+
+// Load subscriber approvals log lists
+async function loadSubscribersApprovals() {
+  subLoading.classList.remove('hidden');
+  subEmpty.classList.add('hidden');
+  subscriberTable.classList.add('hidden');
+  subscriberLogList.innerHTML = '';
+  
+  try {
+    const response = await fetch('/api/admin/subscriptions');
+    const data = await response.json();
+    
+    subLoading.classList.add('hidden');
+    
+    // Filter out only pending verification
+    const pendings = data.filter(sub => sub.status === 'pending');
+    
+    if (pendings.length === 0) {
+      subEmpty.classList.remove('hidden');
+      return;
+    }
+    
+    subscriberTable.classList.remove('hidden');
+    
+    pendings.forEach(sub => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td style="font-weight:700; color:var(--text-bright);">${sub.utr}</td>
+        <td style="color:var(--text-muted);">${sub.parentSessionId.substring(0, 8)}...</td>
+        <td style="display:flex; gap:0.5rem;">
+          <button class="primary-btn sm-btn approve-btn" data-id="${sub.id}" style="padding:0.4rem 0.8rem; background:var(--accent-success); box-shadow:none;">Approve</button>
+          <button class="danger-btn sm-btn reject-btn" data-id="${sub.id}" style="padding:0.4rem 0.8rem; box-shadow:none;">Reject</button>
+        </td>
+      `;
+      
+      tr.querySelector('.approve-btn').addEventListener('click', () => verifySubscription(sub.id, 'approve'));
+      tr.querySelector('.reject-btn').addEventListener('click', () => verifySubscription(sub.id, 'delete'));
+      
+      subscriberLogList.appendChild(tr);
+    });
+    
+  } catch(err) {
+    subLoading.classList.add('hidden');
+    subEmpty.classList.remove('hidden');
+    subEmpty.innerHTML = '<p style="color:var(--accent-danger);">Connection failure loading logs.</p>';
+  }
+}
+
+// Approve / Reject UTR payment verification references
+async function verifySubscription(subId, action) {
+  try {
+    const response = await fetch('/api/admin/subscriptions/verify', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ subId, action })
+    });
+    const data = await response.json();
+    
+    if (response.ok && data.success) {
+      showToast(`Subscription reference ${action}d successfully!`, 'success');
+      loadSubscribersApprovals();
+      checkDownloadLimits();
+    } else {
+      showToast(data.error || 'Operation failed.', 'error');
+    }
+  } catch(err) {
+    showToast('Failed to connect to verification services.', 'error');
+  }
+}
+
 // Lightbox State
 let isDirectPlayActive = false;
 
@@ -769,10 +1250,10 @@ function openLightbox(index) {
     sizeInfo.textContent = formatBytes(file.size);
   }
   
-  // Set download link
+  // Set download link href (hidden anchor triggers native saves)
   lightboxDownload.href = `/api/media/download/${file.id}`;
 
-  const isVideo = file.mimeType.startsWith('video/');
+  const isVideo = checkIsVideo(file);
   isDirectPlayActive = false; 
   
   if (isVideo) {
@@ -790,8 +1271,8 @@ function openLightbox(index) {
     const isFav = state.favorites.includes(file.id);
     lightboxFavBtn.classList.toggle('active', isFav);
     if (isFav) {
-      lightboxHeartIcon.style.fill = '#ff4d6d';
-      lightboxHeartIcon.style.color = '#ff4d6d';
+      lightboxHeartIcon.style.fill = '#ff5e7a';
+      lightboxHeartIcon.style.color = '#ff5e7a';
     } else {
       lightboxHeartIcon.style.fill = 'none';
       lightboxHeartIcon.style.color = 'currentColor';
@@ -841,7 +1322,7 @@ function toggleDirectPlay() {
 
 // Lightbox: Inject image or video/iframe element
 function loadLightboxMedia(file) {
-  const isVideo = file.mimeType.startsWith('video/');
+  const isVideo = checkIsVideo(file);
   lightboxContent.innerHTML = '<div class="spinner"></div>'; 
 
   if (isVideo) {
@@ -869,7 +1350,6 @@ function loadLightboxMedia(file) {
 }
 
 // Lightbox: Close modal
-// Switch focus/overflow locks back
 function closeLightbox() {
   lightbox.classList.remove('active');
   document.body.style.overflow = ''; 

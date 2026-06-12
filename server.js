@@ -13,6 +13,37 @@ const upload = multer({ dest: path.join(__dirname, 'uploads/') });
 // Load environment variables
 dotenv.config();
 
+const CONFIG_FILE = path.join(__dirname, 'config.json');
+
+function readConfig() {
+  if (!fs.existsSync(CONFIG_FILE)) {
+    const defaultData = {
+      upiId: '6284048021@upi',
+      upiName: 'StepUp Dance Studio',
+      subscriptions: [],
+      approvedCookies: [],
+      downloads: {}
+    };
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(defaultData, null, 2));
+    return defaultData;
+  }
+  try {
+    const raw = fs.readFileSync(CONFIG_FILE, 'utf8');
+    return JSON.parse(raw);
+  } catch(e) {
+    console.error('Failed to read config.json:', e);
+    return { upiId: '6284048021@upi', upiName: 'StepUp Dance Studio', subscriptions: [], approvedCookies: [], downloads: {} };
+  }
+}
+
+function writeConfig(data) {
+  try {
+    fs.writeFileSync(CONFIG_FILE, JSON.stringify(data, null, 2));
+  } catch(e) {
+    console.error('Failed to write config.json:', e);
+  }
+}
+
 const app = express();
 const PORT = process.env.PORT || 3000;
 const PASSWORD = process.env.SHARED_PASSWORD || 'camp2026';
@@ -280,6 +311,15 @@ app.get('/api/media/download/:id', requireAuth, async (req, res) => {
     return res.status(500).json({ error: 'Google Drive client not initialized' });
   }
 
+  // Check if Admin
+  const isAdmin = req.cookies.admin_auth === 'true';
+  let parentSessionId = req.cookies.parent_session_id;
+
+  if (!parentSessionId && !isAdmin) {
+    parentSessionId = Math.random().toString(36).substring(2, 15);
+    res.cookie('parent_session_id', parentSessionId, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
+  }
+
   try {
     let fileMeta = null;
     if (mediaCache) {
@@ -292,6 +332,38 @@ app.get('/api/media/download/:id', requireAuth, async (req, res) => {
         fields: 'name, mimeType, size',
       });
       fileMeta = metaRes.data;
+    }
+
+    // Gating check for parents
+    if (!isAdmin) {
+      const config = readConfig();
+      const isSubscribed = config.approvedCookies && config.approvedCookies.includes(parentSessionId);
+
+      if (!isSubscribed) {
+        const isVideo = (fileMeta.mimeType && fileMeta.mimeType.startsWith('video/')) || 
+                        (fileMeta.name && /\.(mp4|mov|m4v|avi|webm|qt|3gp|mkv|hevc)$/i.test(fileMeta.name));
+        
+        if (!config.downloads) config.downloads = {};
+        if (!config.downloads[parentSessionId]) {
+          config.downloads[parentSessionId] = { photos: 0, videos: 0 };
+        }
+
+        const stats = config.downloads[parentSessionId];
+
+        if (isVideo) {
+          if (stats.videos >= 3) {
+            return res.status(402).json({ error: 'Limit exceeded', limitType: 'video' });
+          }
+          stats.videos++;
+        } else {
+          if (stats.photos >= 3) {
+            return res.status(402).json({ error: 'Limit exceeded', limitType: 'photo' });
+          }
+          stats.photos++;
+        }
+
+        writeConfig(config);
+      }
     }
 
     // Get file media stream from Google Drive API
@@ -483,6 +555,136 @@ app.post('/api/media/upload', requireAdmin, upload.single('file'), async (req, r
     }
     res.status(500).json({ error: `Upload failed: ${err.message}` });
   }
+});
+
+// Get Parent Download stats
+app.get('/api/auth/download-stats', requireAuth, (req, res) => {
+  const isAdmin = req.cookies.admin_auth === 'true';
+  if (isAdmin) {
+    return res.json({ isAdmin: true, photosLeft: 9999, videosLeft: 9999, isSubscribed: true });
+  }
+  
+  let parentSessionId = req.cookies.parent_session_id;
+  if (!parentSessionId) {
+    parentSessionId = Math.random().toString(36).substring(2, 15);
+    res.cookie('parent_session_id', parentSessionId, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
+  }
+
+  const config = readConfig();
+  const isSubscribed = config.approvedCookies && config.approvedCookies.includes(parentSessionId);
+  
+  if (isSubscribed) {
+    return res.json({ isSubscribed: true, photosLeft: 9999, videosLeft: 9999 });
+  }
+
+  if (!config.downloads) config.downloads = {};
+  if (!config.downloads[parentSessionId]) {
+    config.downloads[parentSessionId] = { photos: 0, videos: 0 };
+  }
+
+  const stats = config.downloads[parentSessionId];
+  res.json({
+    isSubscribed: false,
+    photosDownloaded: stats.photos,
+    videosDownloaded: stats.videos,
+    photosLeft: Math.max(0, 3 - stats.photos),
+    videosLeft: Math.max(0, 3 - stats.videos)
+  });
+});
+
+// Get UPI configuration for paywall
+app.get('/api/subscription/config', requireAuth, (req, res) => {
+  const config = readConfig();
+  res.json({
+    upiId: config.upiId || '6284048021@upi',
+    upiName: config.upiName || 'StepUp Dance Studio'
+  });
+});
+
+// Update UPI Configuration (Admin Only)
+app.post('/api/admin/config', requireAdmin, (req, res) => {
+  const { upiId, upiName } = req.body;
+  if (!upiId || !upiName) {
+    return res.status(400).json({ error: 'UPI ID and Beneficiary Name are required' });
+  }
+  
+  const config = readConfig();
+  config.upiId = upiId.trim();
+  config.upiName = upiName.trim();
+  writeConfig(config);
+  
+  res.json({ success: true, message: 'UPI configurations updated successfully' });
+});
+
+// Submit Payment UTR / Transaction Reference ID
+app.post('/api/subscription/submit', requireAuth, (req, res) => {
+  const { utr } = req.body;
+  if (!utr || utr.trim().length < 8) {
+    return res.status(400).json({ error: 'Please enter a valid Transaction Reference ID / UTR' });
+  }
+
+  let parentSessionId = req.cookies.parent_session_id;
+  if (!parentSessionId) {
+    parentSessionId = Math.random().toString(36).substring(2, 15);
+    res.cookie('parent_session_id', parentSessionId, { maxAge: 30 * 24 * 60 * 60 * 1000, httpOnly: true });
+  }
+
+  const config = readConfig();
+  
+  if (!config.subscriptions) config.subscriptions = [];
+  const exists = config.subscriptions.find(sub => sub.utr === utr.trim());
+  if (exists) {
+    return res.status(400).json({ error: 'This UTR Reference ID is already submitted and is pending verification.' });
+  }
+
+  config.subscriptions.push({
+    id: Math.random().toString(36).substring(2, 10).toUpperCase(),
+    utr: utr.trim(),
+    parentSessionId: parentSessionId,
+    status: 'pending',
+    createdTime: new Date().toISOString()
+  });
+
+  writeConfig(config);
+  res.json({ success: true, message: 'Payment reference submitted successfully for verification!' });
+});
+
+// Fetch All Subscriptions (Admin Only)
+app.get('/api/admin/subscriptions', requireAdmin, (req, res) => {
+  const config = readConfig();
+  res.json(config.subscriptions || []);
+});
+
+// Approve / Reject Subscription (Admin Only)
+app.post('/api/admin/subscriptions/verify', requireAdmin, (req, res) => {
+  const { subId, action } = req.body; // action: 'approve' | 'delete'
+  if (!subId || !action) {
+    return res.status(400).json({ error: 'Subscription ID and action are required' });
+  }
+
+  const config = readConfig();
+  if (!config.subscriptions) config.subscriptions = [];
+
+  const subIndex = config.subscriptions.findIndex(sub => sub.id === subId);
+  if (subIndex === -1) {
+    return res.status(404).json({ error: 'Subscription not found' });
+  }
+
+  const sub = config.subscriptions[subIndex];
+
+  if (action === 'approve') {
+    sub.status = 'approved';
+    if (!config.approvedCookies) config.approvedCookies = [];
+    if (!config.approvedCookies.includes(sub.parentSessionId)) {
+      config.approvedCookies.push(sub.parentSessionId);
+    }
+  } else {
+    // Delete/reject subscription
+    config.subscriptions.splice(subIndex, 1);
+  }
+
+  writeConfig(config);
+  res.json({ success: true, message: `Subscription reference ${action}d successfully` });
 });
 
 // Catch-all route to serve Frontend index.html for client side routing
