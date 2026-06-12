@@ -28,9 +28,231 @@
   <div class="ambient-glow glow-1"></div>
   <div class="ambient-glow glow-2"></div>
   
-  <!-- 1. Passcode Screen (Gatekeeper) -->
-  <div id="auth-screen" class="auth-container active">
+  <!-- 0. Summer Camp Landing Page -->
+  <div id="landing-screen" class="landing-container active">
+    <!-- Landing Header -->
+    <header class="landing-header">
+      <div class="logo">
+        <img src="/logo.png" alt="Dance Studio Logo" class="logo-img">
+        <div class="logo-text">
+          <h2>Step Up</h2>
+          <span>Dance Studio</span>
+        </div>
+      </div>
+      <nav class="landing-nav">
+        <a href="#about" class="nav-link">About</a>
+        <a href="#programs" class="nav-link">Programs</a>
+        <a href="#timings" class="nav-link">Timings</a>
+        <a href="#contact" class="nav-link">Contact</a>
+      </nav>
+      <button id="open-portal-btn-1" class="primary-btn parent-portal-btn header-portal-btn">
+        <i data-lucide="lock-keyhole"></i>
+        <span>Parent Portal</span>
+      </button>
+    </header>
+
+    <!-- Hero Section -->
+    <section id="about" class="hero-section">
+      <div class="hero-content">
+        <div class="badge-trust">SINCE 2018 • YOUR TRUST OUR PRIDE</div>
+        <h1 class="hero-title">Step Up Dance Studio <span class="accent-text">Summer Camp</span></h1>
+        <p class="hero-subtitle">A Perfect Blend of Fun, Fitness & Learning for your kids this summer!</p>
+        
+        <div class="camp-meta-grid">
+          <div class="meta-item">
+            <i data-lucide="calendar"></i>
+            <div>
+              <strong>Camp Dates</strong>
+              <span>3rd to 26th June 2026</span>
+            </div>
+          </div>
+          <div class="meta-item">
+            <i data-lucide="clock"></i>
+            <div>
+              <strong>Timings</strong>
+              <span>9:00 AM - 12:00 PM | 4:00 PM - 6:30 PM</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="hero-ctas">
+          <a href="tel:6284048021" class="primary-btn call-btn">
+            <i data-lucide="phone"></i>
+            <span>Call 6284048021</span>
+          </a>
+          <button id="open-portal-btn-2" class="secondary-btn portal-btn">
+            <i data-lucide="images"></i>
+            <span>Parent Media Portal</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Rhombus Image Grid (inspired by generation-vlg.ru) -->
+      <div class="hero-graphics">
+        <div class="rhombus-grid">
+          <div class="rhombus-card r-card-1">
+            <div class="rhombus-inner">
+              <div class="rhombus-color-overlay red-overlay"></div>
+              <div class="rhombus-content">
+                <i data-lucide="music-4"></i>
+                <span>Dance</span>
+              </div>
+            </div>
+          </div>
+          <div class="rhombus-card r-card-2">
+            <div class="rhombus-inner">
+              <div class="rhombus-color-overlay blue-overlay"></div>
+              <div class="rhombus-content">
+                <i data-lucide="sparkles"></i>
+                <span>Bhangra</span>
+              </div>
+            </div>
+          </div>
+          <div class="rhombus-card r-card-3">
+            <div class="rhombus-inner">
+              <div class="rhombus-color-overlay green-overlay"></div>
+              <div class="rhombus-content">
+                <i data-lucide="heart"></i>
+                <span>Yoga</span>
+              </div>
+            </div>
+          </div>
+          <div class="rhombus-card r-card-4">
+            <div class="rhombus-inner">
+              <div class="rhombus-color-overlay yellow-overlay"></div>
+              <div class="rhombus-content">
+                <i data-lucide="palette"></i>
+                <span>Art & Craft</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Decorative particles -->
+        <i class="particle p-dot-red"></i>
+        <i class="particle p-dot-green"></i>
+        <i class="particle p-dot-orange"></i>
+        <i class="particle p-circle-blue"></i>
+      </div>
+    </section>
+
+    <!-- Programs Section -->
+    <section id="programs" class="programs-section">
+      <div class="section-header">
+        <h2 class="section-title">Camp Activities</h2>
+        <p class="section-subtitle">We design creative, physical, and developmental programs for all kids.</p>
+      </div>
+
+      <div class="programs-grid">
+        <div class="program-card card-dance">
+          <div class="card-num">01</div>
+          <i data-lucide="music-4" class="program-icon"></i>
+          <h3>Dance</h3>
+          <p>Learn cool moves, improve rhythm & boost confidence!</p>
+        </div>
+        <div class="program-card card-bhangra">
+          <div class="card-num">02</div>
+          <i data-lucide="sparkles" class="program-icon"></i>
+          <h3>Bhangra</h3>
+          <p>Feel the beat of Punjab, full of energy & excitement!</p>
+        </div>
+        <div class="program-card card-yoga">
+          <div class="card-num">03</div>
+          <i data-lucide="heart" class="program-icon"></i>
+          <h3>Yoga</h3>
+          <p>Relax, stretch & stay healthy with yoga!</p>
+        </div>
+        <div class="program-card card-art">
+          <div class="card-num">04</div>
+          <i data-lucide="palette" class="program-icon"></i>
+          <h3>Art & Craft</h3>
+          <p>Unleash creativity with colors, craft & imagination!</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Timings and Admissions -->
+    <section id="timings" class="timings-section">
+      <div class="timings-card glass-card">
+        <h2 class="section-title text-center" style="margin-bottom: 2rem;">Timings & Admissions</h2>
+        <div class="timings-details">
+          <div class="timing-box">
+            <i data-lucide="calendar-range" class="timing-icon"></i>
+            <h4>Dates</h4>
+            <p>3rd to 26th June 2026</p>
+            <span class="subtext">Registration started from 20th May 2026</span>
+          </div>
+          <div class="timing-box">
+            <i data-lucide="clock-3" class="timing-icon"></i>
+            <h4>Session Hours</h4>
+            <p>Morning: 9:00 AM - 12:00 PM</p>
+            <p>Evening: 4:00 PM - 6:30 PM</p>
+          </div>
+          <div class="timing-box highlight-box">
+            <i data-lucide="rocket" class="timing-icon"></i>
+            <h4>Limited Slots!</h4>
+            <p class="bold-text">Admission Open Very Soon!</p>
+            <span class="alert-text">Don't be late. Apka bacha best camp miss krde!</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Trust Badges -->
+    <section class="trust-section">
+      <div class="trust-grid">
+        <div class="trust-badge">
+          <i data-lucide="award"></i>
+          <span>Certified Trainers</span>
+        </div>
+        <div class="trust-badge">
+          <i data-lucide="shield"></i>
+          <span>Safe Environment</span>
+        </div>
+        <div class="trust-badge">
+          <i data-lucide="smile"></i>
+          <span>Learn, Play & Grow</span>
+        </div>
+        <div class="trust-badge">
+          <i data-lucide="heart-handshake"></i>
+          <span>Confidence & Discipline</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Contact Info -->
+    <section id="contact" class="contact-section">
+      <h2 class="section-title text-center" style="margin-bottom: 2.5rem;">Get in Touch</h2>
+      <div class="contact-grid">
+        <div class="contact-card glass-card">
+          <i data-lucide="map-pin"></i>
+          <h4>Location</h4>
+          <p>Model Town, Phase 3, Bathinda</p>
+        </div>
+        <div class="contact-card glass-card">
+          <i data-lucide="phone-call"></i>
+          <h4>Phone</h4>
+          <p><a href="tel:6284048021">6284048021</a></p>
+        </div>
+        <div class="contact-card glass-card">
+          <i data-lucide="instagram"></i>
+          <h4>Instagram</h4>
+          <p><a href="https://instagram.com/stepup_dance_studio_bathinda" target="_blank">@stepup_dance_studio_bathinda</a></p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Landing Footer -->
+    <footer class="landing-footer-bar">
+      <p>&copy; 2026 Step Up Dance Studio. Designed for Summer Camp 2026.</p>
+    </footer>
+  </div>
+
+  <!-- 1. Passcode Screen (Gatekeeper Overlay Modal) -->
+  <div id="auth-screen" class="auth-modal-overlay">
     <div class="glass-card auth-card">
+      <button id="close-auth-btn" class="icon-btn circle-btn close-auth-btn" title="Close">
+        <i data-lucide="x"></i>
+      </button>
       <div class="auth-header">
         <div class="logo-badge">
           <img src="/logo.png" alt="Dance Studio Logo" class="auth-logo-img">

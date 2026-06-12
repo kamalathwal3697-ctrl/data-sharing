@@ -33,6 +33,9 @@ const categoryTabsContainer = document.getElementById('category-tabs');
 const formatFilters = document.querySelectorAll('.format-filters .filter-tab');
 const refreshBtn = document.getElementById('refresh-btn');
 const logoutBtn = document.getElementById('logout-btn');
+const openPortalBtn1 = document.getElementById('open-portal-btn-1');
+const openPortalBtn2 = document.getElementById('open-portal-btn-2');
+const closeAuthBtn = document.getElementById('close-auth-btn');
 
 // Lightbox Elements
 const lightbox = document.getElementById('lightbox');
@@ -54,6 +57,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
 // Setup Event Listeners
 function setupEventListeners() {
+  // Open Parent Portal modal
+  if (openPortalBtn1) {
+    openPortalBtn1.addEventListener('click', () => {
+      authScreen.classList.add('active');
+      passcodeInput.focus();
+    });
+  }
+  if (openPortalBtn2) {
+    openPortalBtn2.addEventListener('click', () => {
+      authScreen.classList.add('active');
+      passcodeInput.focus();
+    });
+  }
+  // Close Parent Portal modal
+  if (closeAuthBtn) {
+    closeAuthBtn.addEventListener('click', () => {
+      authScreen.classList.remove('active');
+      loginError.classList.remove('active');
+    });
+  }
+
   // Passcode toggle visibility
   togglePasswordBtn.addEventListener('click', () => {
     const isPassword = passcodeInput.type === 'password';
@@ -92,7 +116,7 @@ function setupEventListeners() {
   logoutBtn.addEventListener('click', async () => {
     await fetch('/api/auth/logout', { method: 'POST' });
     state.authenticated = false;
-    showScreen('auth');
+    showScreen('landing');
     passcodeInput.value = '';
   });
 
@@ -172,16 +196,18 @@ async function checkAuth() {
       showScreen('gallery');
       loadMedia();
     } else {
-      showScreen('auth');
+      showScreen('landing');
     }
   } catch (err) {
-    showScreen('auth');
+    showScreen('landing');
   }
 }
 
-// Switch between Login and Gallery Screens
+// Switch between Screens (Gallery vs Landing)
 function showScreen(screen) {
+  const landingScreen = document.getElementById('landing-screen');
   if (screen === 'gallery') {
+    if (landingScreen) landingScreen.classList.remove('active');
     authScreen.classList.remove('active');
     galleryScreen.classList.add('active');
     
@@ -203,7 +229,8 @@ function showScreen(screen) {
     }
   } else {
     galleryScreen.classList.remove('active');
-    authScreen.classList.add('active');
+    if (landingScreen) landingScreen.classList.add('active');
+    authScreen.classList.remove('active'); // modal closed by default
   }
   lucide.createIcons();
 }
@@ -221,7 +248,7 @@ async function loadMedia() {
     const response = await fetch('/api/media');
     if (!response.ok) {
       if (response.status === 401) {
-        showScreen('auth');
+        showScreen('landing');
         return;
       }
       throw new Error('Failed to load files');
