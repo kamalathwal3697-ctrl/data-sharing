@@ -87,7 +87,7 @@
       </div>
       
       <div class="header-right">
-        <!-- Upload button opens folder selector, hidden unless admin, but shown here styled -->
+        <!-- Upload button opens folder selector, hidden unless admin -->
         <button id="header-upload-btn" class="upload-btn secondary-btn" title="Upload files (Drag & drop or Click)">
           <i data-lucide="upload-cloud"></i>
           <span>Upload</span>
@@ -96,6 +96,11 @@
         <button id="refresh-btn" class="secondary-btn" title="Sync files from Google Drive">
           <i data-lucide="refresh-cw"></i>
           <span>Sync Drive</span>
+        </button>
+        
+        <!-- Admin settings button -->
+        <button id="admin-settings-btn" class="secondary-btn icon-btn-only hidden" title="Admin Settings">
+          <i data-lucide="settings"></i>
         </button>
         
         <!-- Profile Avatar with Admin badge trigger -->
@@ -119,9 +124,23 @@
     <!-- Hero Section -->
     <section class="hero-section">
       <div class="hero-text">
-        <span class="hero-label">GALLERY DASHBOARD</span>
-        <h1 class="hero-title">StepUp Summer Camp 2026</h1>
-        <p class="hero-subtitle">Access, filter, and download all photos and videos from every camp day.</p>
+        <span class="hero-label">SUMMER CAMP 2026</span>
+        <h1 class="hero-title">STEPUP SUMMER CAMP 2026</h1>
+        <p class="hero-subtitle">A summer full of learning, confidence, creativity, dance, fitness, friendship and unforgettable memories.</p>
+        <div class="hero-ctas">
+          <button class="primary-btn" onclick="document.getElementById('media-section-anchor').scrollIntoView({behavior: 'smooth'})">
+            <i data-lucide="layout-grid"></i>
+            <span>View Gallery</span>
+          </button>
+          <button class="secondary-btn" id="watch-highlights-btn">
+            <i data-lucide="play-circle"></i>
+            <span>Watch Highlights</span>
+          </button>
+          <button class="secondary-btn" onclick="document.getElementById('download-center-anchor').scrollIntoView({behavior: 'smooth'})">
+            <i data-lucide="download"></i>
+            <span>Download Center</span>
+          </button>
+        </div>
       </div>
       
       <!-- Statistics Cards Grid -->
@@ -165,6 +184,255 @@
       </div>
     </section>
 
+    <!-- Summer Camp Overview Section -->
+    <section class="overview-section">
+      <div class="section-header-saas">
+        <h2>What Kids Learned & Experienced</h2>
+        <p>A comprehensive physical and creative developmental program conducted by professional trainers.</p>
+      </div>
+      <div class="overview-grid">
+        <div class="overview-card glass-card">
+          <i data-lucide="music-4" class="overview-icon" style="color:var(--accent-primary);"></i>
+          <h3>Dance Training</h3>
+          <p>Professional dance instruction covering hip-hop, salsa, contemporary, and basic rhythm for all age groups.</p>
+        </div>
+        <div class="overview-card glass-card">
+          <i data-lucide="dumbbell" class="overview-icon" style="color:var(--accent-secondary);"></i>
+          <h3>Fitness & Conditioning</h3>
+          <p>Daily physical activity tracks to improve stamina, alignment, posture, flexibility, and physical health.</p>
+        </div>
+        <div class="overview-card glass-card">
+          <i data-lucide="palette" class="overview-icon" style="color:#f59e0b;"></i>
+          <h3>Art & Creativity</h3>
+          <p>Unleashing imagination with painting, papercraft, clay structures, and custom painting workshops.</p>
+        </div>
+        <div class="overview-card glass-card">
+          <i data-lucide="gamepad-2" class="overview-icon" style="color:var(--accent-success);"></i>
+          <h3>Fun Games</h3>
+          <p>Indoor and outdoor team-building games designed to build communication, strategy, and sportsmanship.</p>
+        </div>
+        <div class="overview-card glass-card">
+          <i data-lucide="smile" class="overview-icon" style="color:#06b6d4;"></i>
+          <h3>Personality Development</h3>
+          <p>Focusing on body language, vocal projection, stage presence, confidence, and public speaking exercises.</p>
+        </div>
+        <div class="overview-card glass-card">
+          <i data-lucide="droplet" class="overview-icon" style="color:#3b82f6;"></i>
+          <h3>Water Activities</h3>
+          <p>Fun water splash days, pool games, water gun challenges, and refreshing summer splash events.</p>
+        </div>
+        <div class="overview-card glass-card">
+          <i data-lucide="sparkles" class="overview-icon" style="color:#8b5cf6;"></i>
+          <h3>Stage Performances</h3>
+          <p>Creating professional stage showcase acts, giving kids real exposure to performing live before an audience.</p>
+        </div>
+        <div class="overview-card glass-card">
+          <i data-lucide="users" class="overview-icon" style="color:#ec4899;"></i>
+          <h3>Group Activities</h3>
+          <p>Cooperative group challenges and buddy projects that foster strong friendships and collaboration skills.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Day-Wise Timeline Section -->
+    <section class="timeline-section">
+      <div class="section-header-saas">
+        <h2>Day-by-Day Journey</h2>
+        <p>Follow our structured 9-day curriculum leading to the grand showcase finale.</p>
+      </div>
+      <div class="timeline-container">
+        <!-- Day 1 -->
+        <div class="timeline-item">
+          <div class="timeline-number">D1</div>
+          <div class="timeline-content glass-card">
+            <h3>Welcome & Ice Breaking</h3>
+            <p>Orientation, buddy assignments, fun interaction games, and initial team selection rounds.</p>
+            <div class="timeline-meta">
+              <span><i data-lucide="image"></i> Day 1 Photos</span>
+              <span><i data-lucide="video"></i> Welcome Video</span>
+            </div>
+          </div>
+        </div>
+        <!-- Day 2 -->
+        <div class="timeline-item">
+          <div class="timeline-number">D2</div>
+          <div class="timeline-content glass-card">
+            <h3>Dance Fundamentals</h3>
+            <p>Rhythm counts, basic groove controls, hip hop formations, and styling postures.</p>
+            <div class="timeline-meta">
+              <span><i data-lucide="image"></i> Class Practice</span>
+              <span><i data-lucide="video"></i> Tutorial Shoots</span>
+            </div>
+          </div>
+        </div>
+        <!-- Day 3 -->
+        <div class="timeline-item">
+          <div class="timeline-number">D3</div>
+          <div class="timeline-content glass-card">
+            <h3>Fitness & Team Activities</h3>
+            <p>Flexibility training, core drills, outdoor target games, and relay matches.</p>
+            <div class="timeline-meta">
+              <span><i data-lucide="image"></i> Sport Snaps</span>
+              <span><i data-lucide="video"></i> Workout Reels</span>
+            </div>
+          </div>
+        </div>
+        <!-- Day 4 -->
+        <div class="timeline-item">
+          <div class="timeline-number">D4</div>
+          <div class="timeline-content glass-card">
+            <h3>Creative Art Day</h3>
+            <p>Tie-dye T-shirt creations, clay sculptures, craft paintings, and paper origami.</p>
+            <div class="timeline-meta">
+              <span><i data-lucide="image"></i> Masterpieces</span>
+              <span><i data-lucide="video"></i> DIY Workshops</span>
+            </div>
+          </div>
+        </div>
+        <!-- Day 5 -->
+        <div class="timeline-item">
+          <div class="timeline-number">D5</div>
+          <div class="timeline-content glass-card">
+            <h3>Outdoor Adventures</h3>
+            <p>Treasure hunt games, nature walks, target runs, and team obstacle tracks.</p>
+            <div class="timeline-meta">
+              <span><i data-lucide="image"></i> Adventure Snaps</span>
+              <span><i data-lucide="video"></i> Hunt Reels</span>
+            </div>
+          </div>
+        </div>
+        <!-- Day 6 -->
+        <div class="timeline-item">
+          <div class="timeline-number">D6</div>
+          <div class="timeline-content glass-card">
+            <h3>Dance Choreography</h3>
+            <p>Merging segments, synchronization exercises, formations, and facial expressions.</p>
+            <div class="timeline-meta">
+              <span><i data-lucide="image"></i> Formations</span>
+              <span><i data-lucide="video"></i> Sync Shoots</span>
+            </div>
+          </div>
+        </div>
+        <!-- Day 7 -->
+        <div class="timeline-item">
+          <div class="timeline-number">D7</div>
+          <div class="timeline-content glass-card">
+            <h3>Fun Games & Challenges</h3>
+            <p>Splash water ball, target toss, water gun runs, and refreshing splash breaks.</p>
+            <div class="timeline-meta">
+              <span><i data-lucide="image"></i> Splash Snaps</span>
+              <span><i data-lucide="video"></i> Splash Reels</span>
+            </div>
+          </div>
+        </div>
+        <!-- Day 8 -->
+        <div class="timeline-item">
+          <div class="timeline-number">D8</div>
+          <div class="timeline-content glass-card">
+            <h3>Performance Preparation</h3>
+            <p>Final stage rehearsals, costume trials, stage block configurations, and run-throughs.</p>
+            <div class="timeline-meta">
+              <span><i data-lucide="image"></i> Dress Snaps</span>
+              <span><i data-lucide="video"></i> Rehearsals</span>
+            </div>
+          </div>
+        </div>
+        <!-- Day 9 -->
+        <div class="timeline-item">
+          <div class="timeline-number">D9</div>
+          <div class="timeline-content glass-card">
+            <h3>Grand Finale & Celebration</h3>
+            <p>Live parent stage presentation showcase, certificate distributions, award ceremonies, and camp parties.</p>
+            <div class="timeline-meta">
+              <span><i data-lucide="image"></i> Stage Snaps</span>
+              <span><i data-lucide="video"></i> Showcase Reels</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Featured Highlights Section -->
+    <section class="highlights-section">
+      <div class="section-header-saas">
+        <h2>Camp Highlights</h2>
+        <p>Curated memories of the absolute best milestones from Summer Camp 2026.</p>
+      </div>
+      <div class="highlights-grid">
+        <div class="highlight-large-card glass-card">
+          <div class="hl-content">
+            <span class="hl-badge">BEST PERFORMANCE</span>
+            <h3>Grand Finale Stage Showcase</h3>
+            <p>Watch the synchronization and energy as kids showcase their 9-day training on the big stage before parents!</p>
+          </div>
+        </div>
+        <div class="highlight-small-grid">
+          <div class="hl-sub-card glass-card hl-water">
+            <div class="hl-content">
+              <span class="hl-badge-sub">WATER FUN</span>
+              <h4>Splash Day Challenge</h4>
+            </div>
+          </div>
+          <div class="hl-sub-card glass-card hl-art">
+            <div class="hl-content">
+              <span class="hl-badge-sub">CREATIVITY</span>
+              <h4>Masterpiece Art Gallery</h4>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Testimonials Section -->
+    <section class="testimonials-section">
+      <div class="section-header-saas">
+        <h2>What Parents Loved</h2>
+        <p>Read review feedback from parents on their child's summer camp experience.</p>
+      </div>
+      <div class="testimonials-grid">
+        <div class="testimonial-card glass-card">
+          <div class="stars"><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i></div>
+          <p>"My child gained so much confidence and stage presence! The instructors were professional and the media portal made it so easy to keep track of their daily dance practice."</p>
+          <div class="testimonial-author">
+            <strong>Mrs. Sharma</strong>
+            <span>Parent of Aarav (Age 9)</span>
+          </div>
+        </div>
+        <div class="testimonial-card glass-card">
+          <div class="stars"><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i></div>
+          <p>"Outstanding balance of physical activity, dance training, and creative art workshops. The water splash session was their absolute favorite! Highly recommended."</p>
+          <div class="testimonial-author">
+            <strong>Mr. Bathinda</strong>
+            <span>Parent of Simran (Age 11)</span>
+          </div>
+        </div>
+        <div class="testimonial-card glass-card">
+          <div class="stars"><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i><i data-lucide="star"></i></div>
+          <p>"The best summer experience for my kid! Seeing her performance in the finale was amazing. Security badges on the portal gave me full peace of mind regarding media safety."</p>
+          <div class="testimonial-author">
+            <strong>Mrs. Kaur</strong>
+            <span>Parent of Jaspreet (Age 7)</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Auto-Scrolling Memories Wall -->
+    <section class="wall-section">
+      <div class="wall-scroller">
+        <div class="wall-track" id="wall-track-1">
+          <!-- Populated by JS with random photos -->
+        </div>
+      </div>
+      <div class="wall-scroller">
+        <div class="wall-track reverse" id="wall-track-2">
+          <!-- Populated by JS with random photos -->
+        </div>
+      </div>
+    </section>
+
+    <div id="media-section-anchor" style="padding-top: 2rem;"></div>
+    
     <!-- Controls Section: Search and Filtering -->
     <section class="controls-section">
       <!-- Search Input -->
@@ -205,6 +473,12 @@
       </div>
     </section>
 
+    <!-- Parent Free Downloads counter indicator (Hidden for Admins) -->
+    <div id="download-limit-bar" class="download-limit-bar glass-card hidden">
+      <i data-lucide="info" class="text-primary"></i>
+      <span id="limit-bar-text">You have 3 free photo and 3 free video downloads remaining.</span>
+    </div>
+
     <!-- Media Grid -->
     <main class="media-section">
       <!-- Skeleton Loaders -->
@@ -233,6 +507,45 @@
         <!-- Dynamically injected cards -->
       </div>
     </main>
+
+    <div id="download-center-anchor" style="padding-top: 2rem;"></div>
+
+    <!-- Download Center Section -->
+    <section class="download-center-section">
+      <div class="section-header-saas">
+        <h2>Download Center</h2>
+        <p>Select package deals to download media segments locally.</p>
+      </div>
+      <div class="download-center-grid">
+        <div class="dl-package-card glass-card">
+          <i data-lucide="image" class="package-icon"></i>
+          <h3>All Photos Archive</h3>
+          <p>Download all photos uploaded from Day 1 to Day 9 in a high-resolution Zip package.</p>
+          <button class="primary-btn dl-package-btn" data-type="all-photos">
+            <i data-lucide="download"></i>
+            <span>Request Photo Pack</span>
+          </button>
+        </div>
+        <div class="dl-package-card glass-card">
+          <i data-lucide="video" class="package-icon"></i>
+          <h3>All Videos Archive</h3>
+          <p>Download all video practice edits, stage reels, and tutorial clips in a Zip package.</p>
+          <button class="primary-btn dl-package-btn" data-type="all-videos">
+            <i data-lucide="download"></i>
+            <span>Request Video Pack</span>
+          </button>
+        </div>
+        <div class="dl-package-card glass-card">
+          <i data-lucide="folder-archive" class="package-icon"></i>
+          <h3>Day-Wise Albums</h3>
+          <p>Pick a specific Day from categories and generate an archive for that folder.</p>
+          <button class="secondary-btn dl-package-btn" data-type="day-wise">
+            <i data-lucide="folder-open"></i>
+            <span>Request Day Album</span>
+          </button>
+        </div>
+      </div>
+    </section>
 
     <!-- Footer -->
     <footer class="app-footer">
@@ -274,6 +587,142 @@
     <span id="upload-progress-text" class="progress-text">0% completed</span>
   </div>
 
+  <!-- Paywall Modal Overlay -->
+  <div id="paywall-modal" class="auth-modal-overlay">
+    <div class="glass-card paywall-card">
+      <button id="close-paywall-btn" class="close-auth-btn" title="Close">
+        <i data-lucide="x"></i>
+      </button>
+      
+      <div class="paywall-header">
+        <div class="paywall-badge">
+          <i data-lucide="lock" class="glow-pulse" style="color:var(--accent-secondary); width:28px; height:28px;"></i>
+        </div>
+        <h2>Unlock Premium Access</h2>
+        <p class="paywall-sub">You have used your free download limit of 3 photos & 3 videos.</p>
+        <div class="price-tag">₹99 <span>only</span></div>
+        <p class="payment-note">Subscribe to unlock unlimited high-resolution downloads for all days.</p>
+      </div>
+
+      <div class="payment-body">
+        <div class="qr-code-section">
+          <!-- Dynamically loaded QR Code -->
+          <div id="upi-qr-container" class="qr-container">
+            <div class="spinner"></div>
+          </div>
+          <span class="qr-caption"><i data-lucide="smartphone"></i> Scan QR with GPay, PhonePe, Paytm or any UPI App</span>
+        </div>
+
+        <div class="payment-details-box">
+          <div class="detail-row">
+            <span>Payee Name:</span>
+            <strong id="payee-name">StepUp Dance Studio</strong>
+          </div>
+          <div class="detail-row">
+            <span>UPI ID:</span>
+            <strong id="payee-upi">6284048021@upi</strong>
+          </div>
+        </div>
+
+        <!-- UTR Form -->
+        <form id="paywall-form" class="paywall-form">
+          <div class="input-group">
+            <label for="utr-input">Transaction Reference ID / UTR (12 Digits)</label>
+            <div class="input-wrapper">
+              <i data-lucide="receipt" class="input-icon"></i>
+              <input type="text" id="utr-input" placeholder="Enter UPI Ref No. from your bank app" required minlength="12" maxlength="12" pattern="\d{12}" title="Please enter 12 digit UTR number">
+            </div>
+            <span id="paywall-error" class="error-msg">Failed to submit payment. Try again.</span>
+          </div>
+
+          <button type="submit" class="primary-btn btn-full">
+            <span>Verify & Unlock Gallery</span>
+            <i data-lucide="key-round"></i>
+          </button>
+        </form>
+      </div>
+
+      <div class="security-badge auth-security">
+        <i data-lucide="shield-check" class="security-icon"></i>
+        <span>100% Direct Bank Transfer</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Admin Settings Modal Overlay -->
+  <div id="admin-settings-modal" class="auth-modal-overlay">
+    <div class="glass-card settings-card">
+      <button id="close-settings-btn" class="close-auth-btn" title="Close">
+        <i data-lucide="x"></i>
+      </button>
+      
+      <div class="settings-header">
+        <h2>SaaS Admin Control Panel</h2>
+        <p>Configure bank settings and approve parent subscription transactions.</p>
+      </div>
+
+      <div class="settings-tabs">
+        <button class="settings-tab-btn active" data-tab="payment-config">Bank Settings</button>
+        <button class="settings-tab-btn" data-tab="subscriptions-log">Approvals Log</button>
+      </div>
+
+      <!-- Tab 1: Configure UPI -->
+      <div id="tab-payment-config" class="settings-tab-content active">
+        <form id="admin-upi-form">
+          <div class="input-group">
+            <label for="admin-upi-id">Admin UPI ID (for receiving scan payments)</label>
+            <div class="input-wrapper">
+              <i data-lucide="wallet" class="input-icon"></i>
+              <input type="text" id="admin-upi-id" placeholder="e.g. 6284048021@upi" required>
+            </div>
+          </div>
+          
+          <div class="input-group">
+            <label for="admin-upi-name">Beneficiary Name (Account Holder Name)</label>
+            <div class="input-wrapper">
+              <i data-lucide="user" class="input-icon"></i>
+              <input type="text" id="admin-upi-name" placeholder="e.g. StepUp Dance Studio" required>
+            </div>
+          </div>
+
+          <button type="submit" class="primary-btn btn-full">
+            <span>Save Configurations</span>
+            <i data-lucide="save"></i>
+          </button>
+        </form>
+      </div>
+
+      <!-- Tab 2: Approve Subscriptions Log -->
+      <div id="tab-subscriptions-log" class="settings-tab-content">
+        <div class="subscriber-log-wrapper">
+          <div id="sub-loading" class="spinner-container sm-spinner">
+            <div class="spinner"></div>
+            <p>Loading transactions...</p>
+          </div>
+          <div id="sub-empty" class="empty-log hidden">
+            <i data-lucide="check-circle" style="color:var(--accent-success); width:32px; height:32px; margin-bottom:0.5rem;"></i>
+            <p>No pending approvals. All caught up!</p>
+          </div>
+          
+          <div class="table-responsive">
+            <table class="subscriber-table hidden" id="subscriber-table">
+              <thead>
+                <tr>
+                  <th>UTR Reference ID</th>
+                  <th>Parent Session</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="subscriber-log-list">
+                <!-- Dynamically populated rows -->
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Lightbox Viewer Modal -->
   <div id="lightbox" class="lightbox-modal">
     <div class="lightbox-overlay"></div>
@@ -298,10 +747,13 @@
           <i data-lucide="share-2"></i>
           <span>Share</span>
         </button>
-        <a id="lightbox-download" class="primary-btn sm-btn" href="#" download>
+        <button id="lightbox-download-trigger" class="primary-btn sm-btn" title="Download to device">
           <i data-lucide="download"></i>
           <span>Download</span>
-        </a>
+        </button>
+        <!-- Actual native anchor reference used behind the scenes for downloads -->
+        <a id="lightbox-download" class="hidden" href="#" download></a>
+        
         <button id="lightbox-close" class="icon-btn circle-btn close-btn" title="Close (Esc)">
           <i data-lucide="x"></i>
         </button>
