@@ -5,6 +5,10 @@ const fs = require('fs');
 const path = require('path');
 const https = require('https');
 const { drive, auth } = require('@googleapis/drive');
+const multer = require('multer');
+
+// Configure multer for temp uploads
+const upload = multer({ dest: path.join(__dirname, 'uploads/') });
 
 // Load environment variables
 dotenv.config();
@@ -391,6 +395,93 @@ app.delete('/api/media/:id', requireAdmin, async (req, res) => {
   } catch (err) {
     console.error(`[Admin Error] Delete file ${fileId} failed:`, err.message);
     res.status(500).json({ error: `Failed to delete: ${err.message}. Ensure you are using a Service Account with editor permissions.` });
+  }
+});
+
+// Admin File Upload Endpoint
+app.post('/api/media/upload', requireAdmin, upload.single('file'), async (req, res) => {
+  const file = req.file;
+  let { category } = req.body; // e.g. "Day 1", "Day 2", etc. (defaults to General/root)
+  
+  if (!file) {
+    return res.status(400).json({ error: 'No file uploaded' });
+  }
+
+  const driveInstance = getDriveClient();
+  if (!driveInstance) {
+    if (fs.existsSync(file.path)) fs.unlinkSync(file.path);
+    return res.status(500).json({ error: 'Google Drive client not initialized' });
+  }
+
+  try {
+    const rootFolderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    let targetFolderId = rootFolderId;
+
+    // Resolve or create category folder inside root if it's not "General"
+    if (category && category !== 'General' && category.trim() !== '') {
+      category = category.trim();
+      
+      const listRes = await driveInstance.files.list({
+        q: `'${rootFolderId}' in parents and name = '${category}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`,
+        fields: 'files(id, name)'
+      });
+
+      const folders = listRes.data.files || [];
+      if (folders.length > 0) {
+        targetFolderId = folders[0].id;
+      } else {
+        console.log(`[Upload] Creating new category folder: ${category}`);
+        const createFolderRes = await driveInstance.files.create({
+          resource: {
+            name: category,
+            mimeType: 'application/vnd.google-apps.folder',
+            parents: [rootFolderId]
+          },
+          fields: 'id'
+        });
+        targetFolderId = createFolderRes.data.id;
+      }
+    }
+
+    console.log(`[Upload] Uploading file "${file.originalname}" to Google Drive folder: ${targetFolderId}`);
+
+    const media = {
+      mimeType: file.mimetype,
+      body: fs.createReadStream(file.path),
+    };
+
+    const driveFileRes = await driveInstance.files.create({
+      resource: {
+        name: file.originalname,
+        parents: [targetFolderId]
+      },
+      media: media,
+      fields: 'id, name, mimeType'
+    });
+
+    console.log(`[Upload] Uploaded successfully: ${driveFileRes.data.name} (${driveFileRes.data.id})`);
+
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+
+    // Flush cache
+    mediaCache = null;
+    cacheTime = 0;
+
+    res.json({
+      success: true,
+      fileId: driveFileRes.data.id,
+      name: driveFileRes.data.name,
+      message: 'File uploaded successfully'
+    });
+
+  } catch (err) {
+    console.error('[Upload Error] Failed to upload file to Google Drive:', err.message);
+    if (fs.existsSync(file.path)) {
+      fs.unlinkSync(file.path);
+    }
+    res.status(500).json({ error: `Upload failed: ${err.message}` });
   }
 });
 

@@ -3,269 +3,46 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Step Up - Dance Studio Portal 🩰</title>
+  <title>StepUp Dance Studio - Summer Camp Media Portal</title>
   
-  <!-- Premium Fonts -->
+  <!-- Premium Font -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   
-  <!-- Lucide Icons CDN -->
+  <!-- Lucide Icons -->
   <script src="https://unpkg.com/lucide@latest"></script>
   
-  <!-- Apple Web App Meta Tags (Installs as App on iPhone) -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <meta name="apple-mobile-web-app-title" content="Step Up">
+  <meta name="apple-mobile-web-app-title" content="StepUp">
   <link rel="apple-touch-icon" href="/logo.png">
   
-  <!-- Core stylesheet -->
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body class="dark-mode">
   
-  <!-- Background Ambient Glows -->
+  <!-- Ambient background glow elements -->
   <div class="ambient-glow glow-1"></div>
   <div class="ambient-glow glow-2"></div>
   
-  <!-- 0. Summer Camp Landing Page -->
-  <div id="landing-screen" class="landing-container active">
-    <!-- Landing Header -->
-    <header class="landing-header">
-      <div class="logo">
-        <img src="/logo.png" alt="Dance Studio Logo" class="logo-img">
-        <div class="logo-text">
-          <h2>Step Up</h2>
-          <span>Dance Studio</span>
-        </div>
-      </div>
-      <nav class="landing-nav">
-        <a href="#about" class="nav-link">About</a>
-        <a href="#programs" class="nav-link">Programs</a>
-        <a href="#timings" class="nav-link">Timings</a>
-        <a href="#contact" class="nav-link">Contact</a>
-      </nav>
-      <button id="open-portal-btn-1" class="primary-btn parent-portal-btn header-portal-btn">
-        <i data-lucide="lock-keyhole"></i>
-        <span>Parent Portal</span>
-      </button>
-    </header>
-
-    <!-- Hero Section -->
-    <section id="about" class="hero-section">
-      <div class="hero-content">
-        <div class="badge-trust">SINCE 2018 • YOUR TRUST OUR PRIDE</div>
-        <h1 class="hero-title">Step Up Dance Studio <span class="accent-text">Summer Camp</span></h1>
-        <p class="hero-subtitle">A Perfect Blend of Fun, Fitness & Learning for your kids this summer!</p>
-        
-        <div class="camp-meta-grid">
-          <div class="meta-item">
-            <i data-lucide="calendar"></i>
-            <div>
-              <strong>Camp Dates</strong>
-              <span>3rd to 26th June 2026</span>
-            </div>
-          </div>
-          <div class="meta-item">
-            <i data-lucide="clock"></i>
-            <div>
-              <strong>Timings</strong>
-              <span>9:00 AM - 12:00 PM | 4:00 PM - 6:30 PM</span>
-            </div>
-          </div>
-        </div>
-
-        <div class="hero-ctas">
-          <a href="tel:6284048021" class="primary-btn call-btn">
-            <i data-lucide="phone"></i>
-            <span>Call 6284048021</span>
-          </a>
-          <button id="open-portal-btn-2" class="secondary-btn portal-btn">
-            <i data-lucide="images"></i>
-            <span>Parent Media Portal</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Rhombus Image Grid (inspired by generation-vlg.ru) -->
-      <div class="hero-graphics">
-        <div class="rhombus-grid">
-          <div class="rhombus-card r-card-1">
-            <div class="rhombus-inner">
-              <div class="rhombus-color-overlay red-overlay"></div>
-              <div class="rhombus-content">
-                <i data-lucide="music-4"></i>
-                <span>Dance</span>
-              </div>
-            </div>
-          </div>
-          <div class="rhombus-card r-card-2">
-            <div class="rhombus-inner">
-              <div class="rhombus-color-overlay blue-overlay"></div>
-              <div class="rhombus-content">
-                <i data-lucide="sparkles"></i>
-                <span>Bhangra</span>
-              </div>
-            </div>
-          </div>
-          <div class="rhombus-card r-card-3">
-            <div class="rhombus-inner">
-              <div class="rhombus-color-overlay green-overlay"></div>
-              <div class="rhombus-content">
-                <i data-lucide="heart"></i>
-                <span>Yoga</span>
-              </div>
-            </div>
-          </div>
-          <div class="rhombus-card r-card-4">
-            <div class="rhombus-inner">
-              <div class="rhombus-color-overlay yellow-overlay"></div>
-              <div class="rhombus-content">
-                <i data-lucide="palette"></i>
-                <span>Art & Craft</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        <!-- Decorative particles -->
-        <i class="particle p-dot-red"></i>
-        <i class="particle p-dot-green"></i>
-        <i class="particle p-dot-orange"></i>
-        <i class="particle p-circle-blue"></i>
-      </div>
-    </section>
-
-    <!-- Programs Section -->
-    <section id="programs" class="programs-section">
-      <div class="section-header">
-        <h2 class="section-title">Camp Activities</h2>
-        <p class="section-subtitle">We design creative, physical, and developmental programs for all kids.</p>
-      </div>
-
-      <div class="programs-grid">
-        <div class="program-card card-dance">
-          <div class="card-num">01</div>
-          <i data-lucide="music-4" class="program-icon"></i>
-          <h3>Dance</h3>
-          <p>Learn cool moves, improve rhythm & boost confidence!</p>
-        </div>
-        <div class="program-card card-bhangra">
-          <div class="card-num">02</div>
-          <i data-lucide="sparkles" class="program-icon"></i>
-          <h3>Bhangra</h3>
-          <p>Feel the beat of Punjab, full of energy & excitement!</p>
-        </div>
-        <div class="program-card card-yoga">
-          <div class="card-num">03</div>
-          <i data-lucide="heart" class="program-icon"></i>
-          <h3>Yoga</h3>
-          <p>Relax, stretch & stay healthy with yoga!</p>
-        </div>
-        <div class="program-card card-art">
-          <div class="card-num">04</div>
-          <i data-lucide="palette" class="program-icon"></i>
-          <h3>Art & Craft</h3>
-          <p>Unleash creativity with colors, craft & imagination!</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Timings and Admissions -->
-    <section id="timings" class="timings-section">
-      <div class="timings-card glass-card">
-        <h2 class="section-title text-center" style="margin-bottom: 2rem;">Timings & Admissions</h2>
-        <div class="timings-details">
-          <div class="timing-box">
-            <i data-lucide="calendar-range" class="timing-icon"></i>
-            <h4>Dates</h4>
-            <p>3rd to 26th June 2026</p>
-            <span class="subtext">Registration started from 20th May 2026</span>
-          </div>
-          <div class="timing-box">
-            <i data-lucide="clock-3" class="timing-icon"></i>
-            <h4>Session Hours</h4>
-            <p>Morning: 9:00 AM - 12:00 PM</p>
-            <p>Evening: 4:00 PM - 6:30 PM</p>
-          </div>
-          <div class="timing-box highlight-box">
-            <i data-lucide="rocket" class="timing-icon"></i>
-            <h4>Limited Slots!</h4>
-            <p class="bold-text">Admission Open Very Soon!</p>
-            <span class="alert-text">Don't be late. Apka bacha best camp miss krde!</span>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Trust Badges -->
-    <section class="trust-section">
-      <div class="trust-grid">
-        <div class="trust-badge">
-          <i data-lucide="award"></i>
-          <span>Certified Trainers</span>
-        </div>
-        <div class="trust-badge">
-          <i data-lucide="shield"></i>
-          <span>Safe Environment</span>
-        </div>
-        <div class="trust-badge">
-          <i data-lucide="smile"></i>
-          <span>Learn, Play & Grow</span>
-        </div>
-        <div class="trust-badge">
-          <i data-lucide="heart-handshake"></i>
-          <span>Confidence & Discipline</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- Contact Info -->
-    <section id="contact" class="contact-section">
-      <h2 class="section-title text-center" style="margin-bottom: 2.5rem;">Get in Touch</h2>
-      <div class="contact-grid">
-        <div class="contact-card glass-card">
-          <i data-lucide="map-pin"></i>
-          <h4>Location</h4>
-          <p>Model Town, Phase 3, Bathinda</p>
-        </div>
-        <div class="contact-card glass-card">
-          <i data-lucide="phone-call"></i>
-          <h4>Phone</h4>
-          <p><a href="tel:6284048021">6284048021</a></p>
-        </div>
-        <div class="contact-card glass-card">
-          <i data-lucide="instagram"></i>
-          <h4>Instagram</h4>
-          <p><a href="https://instagram.com/stepup_dance_studio_bathinda" target="_blank">@stepup_dance_studio_bathinda</a></p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Landing Footer -->
-    <footer class="landing-footer-bar">
-      <p>&copy; 2026 Step Up Dance Studio. Designed for Summer Camp 2026.</p>
-    </footer>
-  </div>
-
-  <!-- 1. Passcode Screen (Gatekeeper Overlay Modal) -->
-  <div id="auth-screen" class="auth-modal-overlay">
-    <div class="glass-card auth-card">
-      <button id="close-auth-btn" class="icon-btn circle-btn close-auth-btn" title="Close">
-        <i data-lucide="x"></i>
-      </button>
+  <!-- SaaS Login Screen -->
+  <div id="auth-screen" class="auth-container active">
+    <div class="auth-card">
       <div class="auth-header">
         <div class="logo-badge">
-          <img src="/logo.png" alt="Dance Studio Logo" class="auth-logo-img">
+          <img src="/logo.png" alt="StepUp Logo" class="auth-logo-img">
         </div>
-        <h1>Dance Studio</h1>
-        <p>Enter the passcode to view and download photos and videos.</p>
+        <h1>StepUp Dance Studio</h1>
+        <span class="tagline">Summer Camp Media Gallery</span>
+        <p>Enter the access passcode to browse and download camp photos & videos.</p>
       </div>
       
       <form id="login-form">
         <div class="input-group">
           <label for="passcode">Access Passcode</label>
           <div class="input-wrapper">
-            <i data-lucide="key-round" class="input-icon"></i>
+            <i data-lucide="lock" class="input-icon"></i>
             <input type="password" id="passcode" placeholder="••••••••" required autocomplete="current-password">
             <button type="button" id="toggle-password" class="icon-btn">
               <i data-lucide="eye" id="eye-icon"></i>
@@ -281,129 +58,277 @@
       </form>
       
       <div class="security-badge auth-security">
-        <i data-lucide="shield-check" class="security-icon"></i>
-        <span>100% Secure & Safe Access</span>
+        <i data-lucide="shield" class="security-icon"></i>
+        <span>100% Secure & Safe SSL Access</span>
       </div>
     </div>
   </div>
 
-  <!-- 2. Main Portal Gallery -->
+  <!-- SaaS Gallery Dashboard -->
   <div id="gallery-screen" class="gallery-container">
-    <!-- Navigation / Header -->
+    
+    <!-- Sticky Glass Header -->
     <header class="app-header">
-      <div class="logo">
-        <img src="/logo.png" alt="Dance Studio Logo" class="logo-img">
-        <div class="logo-text">
-          <h2>Step Up</h2>
-          <span>Dance Studio</span>
+      <div class="header-left">
+        <div class="logo">
+          <img src="/logo.png" alt="StepUp Logo" class="logo-img">
+          <div class="logo-text">
+            <h2>StepUp</h2>
+            <span>Dance Studio</span>
+          </div>
         </div>
       </div>
       
-      <div class="header-actions">
-        <button id="refresh-btn" class="secondary-btn" title="Refresh files (clears cache)">
+      <div class="header-center">
+        <div class="gallery-title-badge">
+          <i data-lucide="sparkles"></i>
+          <span>Summer Camp Gallery</span>
+        </div>
+      </div>
+      
+      <div class="header-right">
+        <!-- Upload button opens folder selector, hidden unless admin, but shown here styled -->
+        <button id="header-upload-btn" class="upload-btn secondary-btn" title="Upload files (Drag & drop or Click)">
+          <i data-lucide="upload-cloud"></i>
+          <span>Upload</span>
+        </button>
+        
+        <button id="refresh-btn" class="secondary-btn" title="Sync files from Google Drive">
           <i data-lucide="refresh-cw"></i>
-          <span class="btn-text">Sync Drive</span>
+          <span>Sync Drive</span>
         </button>
-        <button id="logout-btn" class="danger-btn" title="Log out">
-          <i data-lucide="log-out"></i>
-        </button>
+        
+        <!-- Profile Avatar with Admin badge trigger -->
+        <div class="profile-avatar" id="profile-avatar">
+          <span class="avatar-initials">SU</span>
+          <div class="avatar-dropdown" id="avatar-dropdown">
+            <div class="dropdown-header">
+              <strong id="dropdown-user-role">Guest User</strong>
+              <span id="dropdown-user-desc">Parent Access</span>
+            </div>
+            <hr class="dropdown-divider">
+            <button id="logout-btn" class="dropdown-item danger-item">
+              <i data-lucide="log-out"></i>
+              <span>Logout</span>
+            </button>
+          </div>
+        </div>
       </div>
     </header>
 
-    <!-- Controls: Search and Categories -->
+    <!-- Hero Section -->
+    <section class="hero-section">
+      <div class="hero-text">
+        <span class="hero-label">GALLERY DASHBOARD</span>
+        <h1 class="hero-title">StepUp Summer Camp 2026</h1>
+        <p class="hero-subtitle">Access, filter, and download all photos and videos from every camp day.</p>
+      </div>
+      
+      <!-- Statistics Cards Grid -->
+      <div class="stats-grid">
+        <div class="stat-card glass-card">
+          <div class="stat-icon-wrapper photo-icon">
+            <i data-lucide="image"></i>
+          </div>
+          <div class="stat-info">
+            <h4 id="stat-photos">--</h4>
+            <span>Total Photos</span>
+          </div>
+        </div>
+        <div class="stat-card glass-card">
+          <div class="stat-icon-wrapper video-icon">
+            <i data-lucide="video"></i>
+          </div>
+          <div class="stat-info">
+            <h4 id="stat-videos">--</h4>
+            <span>Total Videos</span>
+          </div>
+        </div>
+        <div class="stat-card glass-card">
+          <div class="stat-icon-wrapper day-icon">
+            <i data-lucide="calendar"></i>
+          </div>
+          <div class="stat-info">
+            <h4 id="stat-days">--</h4>
+            <span>Camp Days</span>
+          </div>
+        </div>
+        <div class="stat-card glass-card">
+          <div class="stat-icon-wrapper storage-icon">
+            <i data-lucide="database"></i>
+          </div>
+          <div class="stat-info">
+            <h4 id="stat-storage">--</h4>
+            <span>Storage Used</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Controls Section: Search and Filtering -->
     <section class="controls-section">
+      <!-- Search Input -->
       <div class="search-bar-wrapper glass-card">
         <i data-lucide="search" class="search-icon"></i>
-        <input type="text" id="search-input" placeholder="Search by name, date or day...">
+        <input type="text" id="search-input" placeholder="Search by filename, date, day or media type...">
         <button id="clear-search" class="icon-btn hidden">
           <i data-lucide="x"></i>
         </button>
       </div>
 
+      <!-- Filters Wrapper -->
       <div class="filters-container">
-        <!-- Main Format Filter -->
+        <!-- Media Type/Favorites Selector -->
         <div class="filter-group format-filters">
-          <button class="filter-tab active" data-filter="all">All Media</button>
-          <button class="filter-tab" data-filter="photo">Photos</button>
-          <button class="filter-tab" data-filter="video">Videos</button>
+          <button class="filter-tab active" data-filter="all">
+            <i data-lucide="layout-grid"></i>
+            <span>All Media</span>
+          </button>
+          <button class="filter-tab" data-filter="photo">
+            <i data-lucide="image"></i>
+            <span>Photos</span>
+          </button>
+          <button class="filter-tab" data-filter="video">
+            <i data-lucide="video"></i>
+            <span>Videos</span>
+          </button>
+          <button class="filter-tab" data-filter="favorite" id="favorite-filter-tab">
+            <i data-lucide="heart" class="heart-icon-filled"></i>
+            <span>Favorites</span>
+          </button>
         </div>
         
-        <!-- Category/Folder Filters (dynamically populated) -->
+        <!-- Day Categories tab list -->
         <div class="filter-group category-filters" id="category-tabs">
-          <!-- Populated by JS: General, Day 1, Day 2, etc. -->
+          <!-- Populated by JS: All Days, Day 1 (142), Day 2 (87), etc. -->
         </div>
       </div>
     </section>
 
     <!-- Media Grid -->
     <main class="media-section">
-      <div id="loading-spinner" class="spinner-container">
-        <div class="spinner"></div>
-        <p>Syncing files from Google Drive...</p>
+      <!-- Skeleton Loaders -->
+      <div id="skeleton-grid" class="media-masonry">
+        <div class="skeleton-card shimmer"></div>
+        <div class="skeleton-card shimmer"></div>
+        <div class="skeleton-card shimmer"></div>
+        <div class="skeleton-card shimmer"></div>
+        <div class="skeleton-card shimmer"></div>
+        <div class="skeleton-card shimmer"></div>
+        <div class="skeleton-card shimmer"></div>
+        <div class="skeleton-card shimmer"></div>
       </div>
       
+      <!-- Empty State -->
       <div id="empty-state" class="empty-container hidden">
-        <i data-lucide="folder-open" class="empty-icon"></i>
+        <div class="empty-icon-circle">
+          <i data-lucide="folder-search" class="empty-icon"></i>
+        </div>
         <h3>No media files found</h3>
-        <p>Try clearing search criteria or uploading files to Google Drive.</p>
+        <p>Try changing filters, clearing your search, or syncing Drive again.</p>
       </div>
 
-      <div id="media-grid" class="media-grid">
-        <!-- Media Cards dynamic injection -->
+      <!-- Real Masonry Grid -->
+      <div id="media-grid" class="media-masonry hidden">
+        <!-- Dynamically injected cards -->
       </div>
     </main>
 
     <!-- Footer -->
     <footer class="app-footer">
-      <div class="security-badge" style="margin-bottom: 0.8rem;">
-        <i data-lucide="shield-check" class="security-icon"></i>
-        <span>100% Secure & Safe SSL Access</span>
+      <div class="footer-left">
+        <span>&copy; 2026 StepUp Dance Studio. All rights reserved.</span>
       </div>
-      <p>&copy; 2026 Step Up Dance Studio. Designed for fast playback of iPhone HEIC and HEVC formats.</p>
+      <div class="footer-center">
+        <div class="security-badge">
+          <i data-lucide="shield-check" class="security-icon"></i>
+          <span>Encrypted SaaS Connection</span>
+        </div>
+      </div>
+      <div class="footer-right">
+        <a href="#" class="footer-link">Privacy Policy</a>
+        <a href="#" class="footer-link">Terms of Service</a>
+        <a href="mailto:contact@stepupdancestudio.com" class="footer-link">Contact</a>
+      </div>
     </footer>
   </div>
 
-  <!-- 3. Lightbox / Media Viewer Modal -->
+  <!-- Drag and Drop Overlay -->
+  <div id="upload-drag-overlay" class="upload-drag-overlay">
+    <div class="drag-overlay-content glass-card">
+      <i data-lucide="upload-cloud" class="drag-icon"></i>
+      <h3>Drop files here to upload</h3>
+      <p id="drag-overlay-target">Files will be added directly to the active folder</p>
+    </div>
+  </div>
+
+  <!-- Upload Progress Floating Panel -->
+  <div id="upload-progress-panel" class="upload-progress-panel hidden">
+    <div class="progress-panel-header">
+      <i data-lucide="loader" class="animate-spin text-primary"></i>
+      <span>Uploading files...</span>
+    </div>
+    <div class="progress-bar-wrapper">
+      <div id="upload-progress-bar" class="progress-bar"></div>
+    </div>
+    <span id="upload-progress-text" class="progress-text">0% completed</span>
+  </div>
+
+  <!-- Lightbox Viewer Modal -->
   <div id="lightbox" class="lightbox-modal">
     <div class="lightbox-overlay"></div>
     
-    <!-- Lightbox Close & Actions -->
+    <!-- Top Bar Controls -->
     <div class="lightbox-top-bar">
       <div class="media-meta">
         <span class="media-badge" id="lightbox-category">Day 1</span>
         <h4 id="lightbox-title">Photo_1234.heic</h4>
         <span id="lightbox-date">June 11, 2026</span>
+        <span id="lightbox-size" class="lightbox-size-info">1.2 MB</span>
       </div>
       <div class="lightbox-actions">
         <button id="lightbox-play-direct" class="secondary-btn sm-btn hidden">
-          <i data-lucide="video"></i>
+          <i data-lucide="play-circle"></i>
           <span>Direct Play</span>
         </button>
-        <a id="lightbox-download" class="secondary-btn sm-btn" href="#" download>
+        <button id="lightbox-favorite-btn" class="secondary-btn sm-btn" title="Add to Favorites">
+          <i data-lucide="heart" id="lightbox-heart-icon"></i>
+        </button>
+        <button id="lightbox-share-btn" class="secondary-btn sm-btn" title="Copy Direct URL">
+          <i data-lucide="share-2"></i>
+          <span>Share</span>
+        </button>
+        <a id="lightbox-download" class="primary-btn sm-btn" href="#" download>
           <i data-lucide="download"></i>
-          <span>Download Original</span>
+          <span>Download</span>
         </a>
-        <button id="lightbox-close" class="icon-btn circle-btn close-btn">
+        <button id="lightbox-close" class="icon-btn circle-btn close-btn" title="Close (Esc)">
           <i data-lucide="x"></i>
         </button>
       </div>
     </div>
 
-    <!-- Navigation Buttons -->
-    <button id="lightbox-prev" class="nav-arrow prev-arrow">
+    <!-- Navigation Arrows -->
+    <button id="lightbox-prev" class="nav-arrow prev-arrow" title="Previous (Left Arrow)">
       <i data-lucide="chevron-left"></i>
     </button>
-    <button id="lightbox-next" class="nav-arrow next-arrow">
+    <button id="lightbox-next" class="nav-arrow next-arrow" title="Next (Right Arrow)">
       <i data-lucide="chevron-right"></i>
     </button>
 
-    <!-- Main Content Container -->
+    <!-- Content Area -->
     <div class="lightbox-content-wrapper">
       <div class="lightbox-content">
-        <!-- Injected via JS: img or video/iframe player -->
+        <!-- Injected via JS -->
       </div>
     </div>
   </div>
+
+  <!-- Hidden File Input for click uploads -->
+  <input type="file" id="hidden-file-input" class="hidden" multiple accept="image/*,video/*">
+
+  <!-- Toast Notification Container -->
+  <div id="toast-container" class="toast-container"></div>
 
   <script src="/js/app.js"></script>
 </body>

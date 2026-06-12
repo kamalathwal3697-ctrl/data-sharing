@@ -1,5 +1,5 @@
 // -------------------------------------------------------------
-// Frontend Logic: Summer Camp Media Portal
+// Frontend Logic: StepUp Dance Studio SaaS Media Portal
 // -------------------------------------------------------------
 
 // Application State
@@ -8,9 +8,10 @@ let state = {
   isAdmin: false,
   allMedia: [],
   filteredMedia: [],
+  favorites: [],
   currentMediaIndex: -1,
   filters: {
-    format: 'all',     // 'all' | 'photo' | 'video'
+    format: 'all',     // 'all' | 'photo' | 'video' | 'favorite'
     category: 'all',   // 'all' | folder name
     search: ''
   }
@@ -25,7 +26,7 @@ const togglePasswordBtn = document.getElementById('toggle-password');
 const eyeIcon = document.getElementById('eye-icon');
 const loginError = document.getElementById('login-error');
 const mediaGrid = document.getElementById('media-grid');
-const loadingSpinner = document.getElementById('loading-spinner');
+const skeletonGrid = document.getElementById('skeleton-grid');
 const emptyState = document.getElementById('empty-state');
 const searchInput = document.getElementById('search-input');
 const clearSearchBtn = document.getElementById('clear-search');
@@ -33,9 +34,18 @@ const categoryTabsContainer = document.getElementById('category-tabs');
 const formatFilters = document.querySelectorAll('.format-filters .filter-tab');
 const refreshBtn = document.getElementById('refresh-btn');
 const logoutBtn = document.getElementById('logout-btn');
-const openPortalBtn1 = document.getElementById('open-portal-btn-1');
-const openPortalBtn2 = document.getElementById('open-portal-btn-2');
-const closeAuthBtn = document.getElementById('close-auth-btn');
+
+// Header Profile Dropdown Elements
+const profileAvatar = document.getElementById('profile-avatar');
+const avatarDropdown = document.getElementById('avatar-dropdown');
+
+// Header Upload Elements
+const headerUploadBtn = document.getElementById('header-upload-btn');
+const hiddenFileInput = document.getElementById('hidden-file-input');
+
+// Drag and Drop Overlay Elements
+const dragOverlay = document.getElementById('upload-drag-overlay');
+const targetFolderDesc = document.getElementById('drag-overlay-target');
 
 // Lightbox Elements
 const lightbox = document.getElementById('lightbox');
@@ -51,33 +61,15 @@ const lightboxPlayDirect = document.getElementById('lightbox-play-direct');
 
 // Initial Setup on Load
 document.addEventListener('DOMContentLoaded', () => {
+  // Load Favorites from LocalStorage
+  state.favorites = JSON.parse(localStorage.getItem('stepup_favorites') || '[]');
+  
   checkAuth();
   setupEventListeners();
 });
 
 // Setup Event Listeners
 function setupEventListeners() {
-  // Open Parent Portal modal
-  if (openPortalBtn1) {
-    openPortalBtn1.addEventListener('click', () => {
-      authScreen.classList.add('active');
-      passcodeInput.focus();
-    });
-  }
-  if (openPortalBtn2) {
-    openPortalBtn2.addEventListener('click', () => {
-      authScreen.classList.add('active');
-      passcodeInput.focus();
-    });
-  }
-  // Close Parent Portal modal
-  if (closeAuthBtn) {
-    closeAuthBtn.addEventListener('click', () => {
-      authScreen.classList.remove('active');
-      loginError.classList.remove('active');
-    });
-  }
-
   // Passcode toggle visibility
   togglePasswordBtn.addEventListener('click', () => {
     const isPassword = passcodeInput.type === 'password';
@@ -104,6 +96,7 @@ function setupEventListeners() {
         loginError.classList.remove('active');
         showScreen('gallery');
         loadMedia();
+        showToast(`Logged in successfully ${state.isAdmin ? 'as Administrator' : ''}`, 'success');
       } else {
         showLoginError();
       }
@@ -113,23 +106,91 @@ function setupEventListeners() {
   });
 
   // Logout Click
-  logoutBtn.addEventListener('click', async () => {
+  logoutBtn.addEventListener('click', async (e) => {
+    e.stopPropagation();
     await fetch('/api/auth/logout', { method: 'POST' });
     state.authenticated = false;
-    showScreen('landing');
+    showScreen('auth');
     passcodeInput.value = '';
+    showToast('Logged out successfully', 'info');
+  });
+
+  // Profile avatar click to toggle dropdown
+  profileAvatar.addEventListener('click', (e) => {
+    e.stopPropagation();
+    avatarDropdown.classList.toggle('active');
+  });
+
+  // Close dropdown on click outside
+  document.addEventListener('click', () => {
+    avatarDropdown.classList.remove('active');
+  });
+
+  // Upload button opens file picker (Admins only)
+  headerUploadBtn.addEventListener('click', () => {
+    if (!state.isAdmin) {
+      showToast('Only administrators can upload files to the gallery.', 'error');
+      return;
+    }
+    hiddenFileInput.click();
+  });
+
+  // File Input Change
+  hiddenFileInput.addEventListener('change', (e) => {
+    const files = e.target.files;
+    if (files.length > 0) {
+      handleFileUploads(files);
+    }
+  });
+
+  // Drag-and-Drop window listeners (Admins only get active drop zone overlays)
+  window.addEventListener('dragenter', (e) => {
+    e.preventDefault();
+    if (state.authenticated) {
+      const activeCategory = state.filters.category === 'all' ? 'General' : state.filters.category;
+      targetFolderDesc.textContent = `Files will be added directly to: ${activeCategory}`;
+      dragOverlay.classList.add('active');
+    }
+  });
+
+  dragOverlay.addEventListener('dragover', (e) => {
+    e.preventDefault();
+  });
+
+  dragOverlay.addEventListener('dragleave', (e) => {
+    e.preventDefault();
+    // Verify leaving dropzone boundary
+    if (e.relatedTarget === null) {
+      dragOverlay.classList.remove('active');
+    }
+  });
+
+  dragOverlay.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dragOverlay.classList.remove('active');
+    if (!state.isAdmin) {
+      showToast('Only administrators can upload files to the gallery.', 'error');
+      return;
+    }
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileUploads(files);
+    }
   });
 
   // Refresh Sync Click
   refreshBtn.addEventListener('click', async () => {
-    refreshBtn.classList.add('animate-spin');
+    refreshBtn.querySelector('i').classList.add('animate-spin');
+    showToast('Syncing files with Google Drive...', 'info');
     try {
       await fetch('/api/media/clear-cache', { method: 'POST' });
       await loadMedia();
+      showToast('Media synced successfully!', 'success');
     } catch (err) {
       console.error('Failed to sync Drive:', err);
+      showToast('Failed to sync Drive files.', 'error');
     } finally {
-      refreshBtn.classList.remove('animate-spin');
+      refreshBtn.querySelector('i').classList.remove('animate-spin');
     }
   });
 
@@ -152,7 +213,7 @@ function setupEventListeners() {
     applyFilters();
   });
 
-  // Format Filter Clicks (All, Photos, Videos)
+  // Format Filter Clicks (All Media, Photos, Videos, Favorites)
   formatFilters.forEach(tab => {
     tab.addEventListener('click', (e) => {
       formatFilters.forEach(t => t.classList.remove('active'));
@@ -176,6 +237,43 @@ function setupEventListeners() {
     toggleDirectPlay();
   });
 
+  // Lightbox Favorite Click
+  const lightboxFavBtn = document.getElementById('lightbox-favorite-btn');
+  if (lightboxFavBtn) {
+    lightboxFavBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const file = state.filteredMedia[state.currentMediaIndex];
+      if (file) {
+        toggleFavorite(file.id);
+        // Refresh active state immediately in lightbox
+        const isFav = state.favorites.includes(file.id);
+        lightboxFavBtn.classList.toggle('active', isFav);
+        const lightboxHeartIcon = document.getElementById('lightbox-heart-icon');
+        if (lightboxHeartIcon) {
+          if (isFav) {
+            lightboxHeartIcon.style.fill = '#ff4d6d';
+            lightboxHeartIcon.style.color = '#ff4d6d';
+          } else {
+            lightboxHeartIcon.style.fill = 'none';
+            lightboxHeartIcon.style.color = 'currentColor';
+          }
+        }
+      }
+    });
+  }
+
+  // Lightbox Share Click
+  const lightboxShareBtn = document.getElementById('lightbox-share-btn');
+  if (lightboxShareBtn) {
+    lightboxShareBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const file = state.filteredMedia[state.currentMediaIndex];
+      if (file) {
+        shareMedia(file.id, file.name);
+      }
+    });
+  }
+
   // Keyboard Navigation for Lightbox & Portal
   document.addEventListener('keydown', (e) => {
     if (!lightbox.classList.contains('active')) return;
@@ -196,41 +294,38 @@ async function checkAuth() {
       showScreen('gallery');
       loadMedia();
     } else {
-      showScreen('landing');
+      showScreen('auth');
     }
   } catch (err) {
-    showScreen('landing');
+    showScreen('auth');
   }
 }
 
-// Switch between Screens (Gallery vs Landing)
+// Switch between screens
 function showScreen(screen) {
-  const landingScreen = document.getElementById('landing-screen');
   if (screen === 'gallery') {
-    if (landingScreen) landingScreen.classList.remove('active');
     authScreen.classList.remove('active');
     galleryScreen.classList.add('active');
     
-    // Toggle admin badge in header
-    const h2 = document.querySelector('.logo-text h2');
-    if (h2) {
-      let badge = document.getElementById('admin-badge');
-      if (state.isAdmin) {
-        if (!badge) {
-          badge = document.createElement('span');
-          badge.id = 'admin-badge';
-          badge.className = 'admin-badge';
-          badge.textContent = 'Admin Mode 🛠️';
-          h2.appendChild(badge);
-        }
-      } else {
-        if (badge) badge.remove();
-      }
+    // Toggle avatar profile details in dropdown
+    const roleText = document.getElementById('dropdown-user-role');
+    const descText = document.getElementById('dropdown-user-desc');
+    const avatarInitials = document.querySelector('.avatar-initials');
+    
+    if (state.isAdmin) {
+      if (roleText) roleText.textContent = 'Administrator';
+      if (descText) descText.textContent = 'Admin Mode 🛠️';
+      if (avatarInitials) avatarInitials.textContent = 'AD';
+      if (headerUploadBtn) headerUploadBtn.classList.remove('hidden');
+    } else {
+      if (roleText) roleText.textContent = 'Parent User';
+      if (descText) descText.textContent = 'Parent Access';
+      if (avatarInitials) avatarInitials.textContent = 'PA';
+      if (headerUploadBtn) headerUploadBtn.classList.add('hidden');
     }
   } else {
     galleryScreen.classList.remove('active');
-    if (landingScreen) landingScreen.classList.add('active');
-    authScreen.classList.remove('active'); // modal closed by default
+    authScreen.classList.add('active');
   }
   lucide.createIcons();
 }
@@ -241,6 +336,35 @@ function showLoginError() {
   passcodeInput.focus();
 }
 
+// Dynamic toast system
+function showToast(message, type = 'info') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+  
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type}`;
+  
+  let iconName = 'info';
+  if (type === 'success') iconName = 'check-circle';
+  if (type === 'error') iconName = 'alert-triangle';
+  
+  toast.innerHTML = `
+    <i data-lucide="${iconName}" class="toast-icon"></i>
+    <span class="toast-message">${message}</span>
+  `;
+  
+  container.appendChild(toast);
+  lucide.createIcons();
+  
+  // Auto remove after 3.5s
+  setTimeout(() => {
+    toast.classList.add('removing');
+    toast.addEventListener('transitionend', () => {
+      toast.remove();
+    });
+  }, 3500);
+}
+
 // Load media files from backend
 async function loadMedia() {
   showLoader(true);
@@ -248,7 +372,7 @@ async function loadMedia() {
     const response = await fetch('/api/media');
     if (!response.ok) {
       if (response.status === 401) {
-        showScreen('landing');
+        showScreen('auth');
         return;
       }
       throw new Error('Failed to load files');
@@ -256,40 +380,79 @@ async function loadMedia() {
     const data = await response.json();
     state.allMedia = data;
     
+    renderStats();
     buildCategoryTabs();
     applyFilters();
   } catch (err) {
     console.error('Error loading media:', err);
-    mediaGrid.innerHTML = `<p class="error-msg active">Error connecting to Google Drive. Check configuration.</p>`;
+    mediaGrid.innerHTML = `<p class="error-msg active" style="grid-column: 1/-1; text-align: center;">Error connecting to Google Drive. Check configuration.</p>`;
   } finally {
     showLoader(false);
   }
 }
 
-// Show/Hide main spinner
+// Show/Hide loaders
 function showLoader(show) {
   if (show) {
-    loadingSpinner.classList.remove('hidden');
+    skeletonGrid.classList.remove('hidden');
     mediaGrid.classList.add('hidden');
     emptyState.classList.add('hidden');
   } else {
-    loadingSpinner.classList.add('hidden');
-    mediaGrid.classList.remove('hidden');
+    skeletonGrid.classList.add('hidden');
   }
 }
 
-// Generate Day/Folder tabs dynamically
+// Compute & Render statistics in Hero Section
+function renderStats() {
+  const photosCount = state.allMedia.filter(item => item.mimeType.startsWith('image/')).length;
+  const videosCount = state.allMedia.filter(item => item.mimeType.startsWith('video/')).length;
+  const uniqueDays = new Set(state.allMedia.map(item => item.category).filter(c => c !== 'General')).size;
+  const totalBytes = state.allMedia.reduce((sum, item) => sum + (item.size || 0), 0);
+  
+  document.getElementById('stat-photos').textContent = photosCount.toLocaleString();
+  document.getElementById('stat-videos').textContent = videosCount.toLocaleString();
+  document.getElementById('stat-days').textContent = uniqueDays.toLocaleString();
+  document.getElementById('stat-storage').textContent = formatBytes(totalBytes);
+}
+
+// Generate category Day filter tabs dynamically with count badges
 function buildCategoryTabs() {
-  // Get distinct categories
-  const categories = ['all', ...new Set(state.allMedia.map(item => item.category))];
+  const categories = [...new Set(state.allMedia.map(item => item.category))];
+  
+  // Sort: General first, then folders numerically, then alphabetized
+  categories.sort((a, b) => {
+    if (a === 'General') return -1;
+    if (b === 'General') return 1;
+    
+    const aMatch = a.match(/\d+/);
+    const bMatch = b.match(/\d+/);
+    
+    if (aMatch && bMatch) {
+      return parseInt(aMatch[0], 10) - parseInt(bMatch[0], 10);
+    }
+    
+    return a.localeCompare(b);
+  });
   
   categoryTabsContainer.innerHTML = '';
   
-  categories.forEach(cat => {
+  // Add master Day filter tab
+  const allTabs = ['all', ...categories];
+  
+  allTabs.forEach(cat => {
+    const count = cat === 'all' 
+      ? state.allMedia.length 
+      : state.allMedia.filter(item => item.category === cat).length;
+      
     const button = document.createElement('button');
     button.className = `filter-tab ${cat === state.filters.category ? 'active' : ''}`;
     button.setAttribute('data-category', cat);
-    button.textContent = cat === 'all' ? 'All Days' : cat;
+    
+    const label = cat === 'all' ? 'All Days' : cat;
+    button.innerHTML = `
+      <span>${label}</span>
+      <span class="tab-badge" style="background:rgba(255,255,255,0.08); font-size:0.75rem; padding:0.15rem 0.45rem; border-radius:99px; margin-left:0.3rem;">${count}</span>
+    `;
     
     button.addEventListener('click', () => {
       document.querySelectorAll('#category-tabs .filter-tab').forEach(btn => btn.classList.remove('active'));
@@ -302,7 +465,7 @@ function buildCategoryTabs() {
   });
 }
 
-// Filter files list based on current filters and search
+// Filter files list based on format filters, category filter, and search text
 function applyFilters() {
   const { format, category, search } = state.filters;
   
@@ -311,6 +474,10 @@ function applyFilters() {
     const isVideo = item.mimeType.startsWith('video/');
     if (format === 'photo' && isVideo) return false;
     if (format === 'video' && !isVideo) return false;
+    if (format === 'favorite') {
+      const isFav = state.favorites.includes(item.id);
+      if (!isFav) return false;
+    }
     
     // 2. Category Filter
     if (category !== 'all' && item.category !== category) return false;
@@ -328,17 +495,17 @@ function applyFilters() {
   renderGrid();
 }
 
-// Formats file size
+// Formats file sizes
 function formatBytes(bytes, decimals = 1) {
   if (!bytes) return '0 Bytes';
   const k = 1024;
   const dm = decimals < 0 ? 0 : decimals;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
   return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
 }
 
-// Formats file date
+// Formats file dates
 function formatDate(isoString) {
   if (!isoString) return '';
   const date = new Date(isoString);
@@ -351,72 +518,111 @@ function formatDate(isoString) {
   });
 }
 
-// Render dynamic card items
+// Render dynamic card items in responsive Masonry grid
 function renderGrid() {
   mediaGrid.innerHTML = '';
   
   if (state.filteredMedia.length === 0) {
+    mediaGrid.classList.add('hidden');
     emptyState.classList.remove('hidden');
     return;
   }
   
   emptyState.classList.add('hidden');
+  mediaGrid.classList.remove('hidden');
   
   state.filteredMedia.forEach((file, index) => {
     const isVideo = file.mimeType.startsWith('video/');
     const card = document.createElement('div');
-    card.className = 'media-card';
+    card.className = `media-card ${isVideo ? 'is-video' : 'is-photo'}`;
     card.setAttribute('data-id', file.id);
     card.setAttribute('data-index', index);
     
-    // Staggered fade in animation
-    card.style.animationDelay = `${Math.min(index * 0.03, 0.6)}s`;
-
-    // High resolution preview is proxied securely
-    const previewUrl = `/api/media/preview/${file.id}`;
+    card.style.animationDelay = `${Math.min(index * 0.02, 0.4)}s`;
     
-    let playIconHtml = '';
+    const previewUrl = `/api/media/preview/${file.id}`;
+    const isFav = state.favorites.includes(file.id);
+    
+    let badgeHtml = `<span class="card-badge">${file.category}</span>`;
+    let overlayIconHtml = '';
+    
     if (isVideo) {
-      playIconHtml = `
+      badgeHtml += `
+        <span class="duration-badge">
+          <i data-lucide="play"></i>
+          <span>Video</span>
+        </span>
+      `;
+      overlayIconHtml = `
         <div class="video-overlay-icon">
           <i data-lucide="play"></i>
         </div>
       `;
-    }
-
-    let adminControlsHtml = '';
-    if (state.isAdmin) {
-      adminControlsHtml = `
-        <div class="card-admin-actions" onclick="event.stopPropagation();">
-          <button class="card-action-btn edit-btn" title="Rename file">
-            <i data-lucide="edit-2"></i>
-          </button>
-          <button class="card-action-btn delete-btn" title="Move to Trash">
-            <i data-lucide="trash-2"></i>
-          </button>
+    } else {
+      overlayIconHtml = `
+        <div class="photo-overlay-icon">
+          <i data-lucide="maximize-2"></i>
         </div>
       `;
     }
-
+    
+    let adminControlsHtml = '';
+    if (state.isAdmin) {
+      adminControlsHtml = `
+        <button class="card-action-btn edit-btn" title="Rename file" onclick="event.stopPropagation();">
+          <i data-lucide="edit-2"></i>
+        </button>
+        <button class="card-action-btn delete-btn" title="Move to Trash" onclick="event.stopPropagation();">
+          <i data-lucide="trash-2"></i>
+        </button>
+      `;
+    }
+    
     card.innerHTML = `
       <div class="media-thumb-container">
         <img src="${previewUrl}" class="media-thumb" loading="lazy" alt="${file.name}" onerror="this.src='/api/media/preview/${file.id}'">
-        <span class="card-badge">${file.category}</span>
-        ${adminControlsHtml}
-        ${playIconHtml}
+        ${badgeHtml}
+        ${overlayIconHtml}
+        
+        <!-- Hover actions overlay -->
+        <div class="card-hover-actions">
+          <button class="card-action-btn favorite-btn ${isFav ? 'active' : ''}" data-id="${file.id}" title="Favorite" onclick="event.stopPropagation();">
+            <i data-lucide="heart"></i>
+          </button>
+          <button class="card-action-btn share-btn" title="Copy Direct URL" onclick="event.stopPropagation();">
+            <i data-lucide="share-2"></i>
+          </button>
+          ${adminControlsHtml}
+        </div>
+        
         <div class="card-details">
           <span class="card-title" title="${file.name}">${file.name}</span>
           <div class="card-meta">
             <span>${formatDate(file.createdTime).split(',')[0]}</span>
             <div class="card-size-info">
-              <i data-lucide="hard-drive" style="width:11px;height:11px;"></i>
+              <i data-lucide="hard-drive"></i>
               <span>${formatBytes(file.size)}</span>
             </div>
           </div>
         </div>
       </div>
     `;
-
+    
+    // Wire up events
+    card.addEventListener('click', () => openLightbox(index));
+    
+    const favBtn = card.querySelector('.favorite-btn');
+    favBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFavorite(file.id);
+    });
+    
+    const shareBtn = card.querySelector('.share-btn');
+    shareBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      shareMedia(file.id, file.name);
+    });
+    
     if (state.isAdmin) {
       card.querySelector('.edit-btn').addEventListener('click', (e) => {
         e.stopPropagation();
@@ -427,12 +633,116 @@ function renderGrid() {
         deleteFile(file.id, file.name);
       });
     }
-
-    card.addEventListener('click', () => openLightbox(index));
+    
     mediaGrid.appendChild(card);
   });
   
   lucide.createIcons();
+}
+
+// Favorites local persistence system
+function toggleFavorite(fileId) {
+  const index = state.favorites.indexOf(fileId);
+  if (index === -1) {
+    state.favorites.push(fileId);
+    showToast('Added to Favorites ❤️', 'success');
+  } else {
+    state.favorites.splice(index, 1);
+    showToast('Removed from Favorites', 'info');
+  }
+  localStorage.setItem('stepup_favorites', JSON.stringify(state.favorites));
+  
+  // Sync immediate button states in the grid
+  document.querySelectorAll(`.favorite-btn[data-id="${fileId}"]`).forEach(btn => {
+    btn.classList.toggle('active', index === -1);
+  });
+  
+  // Re-apply if looking at favorites
+  if (state.filters.format === 'favorite') {
+    applyFilters();
+  }
+}
+
+// Copy URL link to clipboard
+function shareMedia(fileId, fileName) {
+  const shareUrl = `${window.location.origin}/api/media/download/${fileId}`;
+  
+  navigator.clipboard.writeText(shareUrl).then(() => {
+    showToast(`Download link for "${fileName}" copied to clipboard! 🔗`, 'success');
+  }).catch(() => {
+    const el = document.createElement('textarea');
+    el.value = shareUrl;
+    document.body.appendChild(el);
+    el.select();
+    document.execCommand('copy');
+    document.body.removeChild(el);
+    showToast(`Download link for "${fileName}" copied to clipboard! 🔗`, 'success');
+  });
+}
+
+// Drag and Drop files upload handlers (Sequential XHR with progress computations)
+function handleFileUploads(files) {
+  let fileIndex = 0;
+  
+  function uploadNext() {
+    if (fileIndex >= files.length) {
+      showToast('All files uploaded successfully!', 'success');
+      document.getElementById('upload-progress-panel').classList.add('hidden');
+      loadMedia();
+      return;
+    }
+    
+    const file = files[fileIndex];
+    uploadSingleFile(file, () => {
+      fileIndex++;
+      uploadNext();
+    });
+  }
+  
+  uploadNext();
+}
+
+function uploadSingleFile(file, callback) {
+  const panel = document.getElementById('upload-progress-panel');
+  const bar = document.getElementById('upload-progress-bar');
+  const text = document.getElementById('upload-progress-text');
+  
+  panel.classList.remove('hidden');
+  
+  const xhr = new XMLHttpRequest();
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('category', state.filters.category === 'all' ? 'General' : state.filters.category);
+  
+  xhr.upload.addEventListener('progress', (e) => {
+    if (e.lengthComputable) {
+      const pct = Math.round((e.loaded / e.total) * 100);
+      bar.style.width = pct + '%';
+      text.textContent = `Uploading ${file.name} (${pct}%)`;
+    }
+  });
+  
+  xhr.addEventListener('load', () => {
+    if (xhr.status === 200) {
+      callback();
+    } else {
+      let errText = 'Upload failed';
+      try {
+        const resObj = JSON.parse(xhr.responseText);
+        errText = resObj.error || errText;
+      } catch(e) {}
+      showToast(errText, 'error');
+      panel.classList.add('hidden');
+    }
+  });
+  
+  xhr.addEventListener('error', () => {
+    showToast(`Network error uploading file: ${file.name}`, 'error');
+    panel.classList.add('hidden');
+  });
+  
+  xhr.open('POST', '/api/media/upload');
+  xhr.send(formData);
 }
 
 // Lightbox State
@@ -445,7 +755,7 @@ function openLightbox(index) {
   if (!file) return;
 
   lightbox.classList.add('active');
-  document.body.style.overflow = 'hidden'; // Lock background scroll
+  document.body.style.overflow = 'hidden'; 
 
   // Set file metadata
   lightboxTitle.textContent = file.name;
@@ -453,21 +763,42 @@ function openLightbox(index) {
   lightboxCategory.textContent = file.category;
   lightboxDate.textContent = formatDate(file.createdTime);
   
+  // Set size
+  const sizeInfo = document.getElementById('lightbox-size');
+  if (sizeInfo) {
+    sizeInfo.textContent = formatBytes(file.size);
+  }
+  
   // Set download link
   lightboxDownload.href = `/api/media/download/${file.id}`;
 
   const isVideo = file.mimeType.startsWith('video/');
-  isDirectPlayActive = false; // Reset to Google Player default when opening new media
+  isDirectPlayActive = false; 
   
   if (isVideo) {
     lightboxPlayDirect.classList.remove('hidden');
-    lightboxPlayDirect.innerHTML = '<i data-lucide="video"></i><span>Direct Play</span>';
+    lightboxPlayDirect.innerHTML = '<i data-lucide="play-circle"></i><span>Direct Play</span>';
   } else {
     lightboxPlayDirect.classList.add('hidden');
   }
-  lucide.createIcons();
+  
+  // Favorite state setting
+  const lightboxFavBtn = document.getElementById('lightbox-favorite-btn');
+  const lightboxHeartIcon = document.getElementById('lightbox-heart-icon');
+  
+  if (lightboxFavBtn && lightboxHeartIcon) {
+    const isFav = state.favorites.includes(file.id);
+    lightboxFavBtn.classList.toggle('active', isFav);
+    if (isFav) {
+      lightboxHeartIcon.style.fill = '#ff4d6d';
+      lightboxHeartIcon.style.color = '#ff4d6d';
+    } else {
+      lightboxHeartIcon.style.fill = 'none';
+      lightboxHeartIcon.style.color = 'currentColor';
+    }
+  }
 
-  // Load Content
+  lucide.createIcons();
   loadLightboxMedia(file);
 }
 
@@ -479,7 +810,6 @@ function toggleDirectPlay() {
   isDirectPlayActive = !isDirectPlayActive;
   
   if (isDirectPlayActive) {
-    // Switch to direct HTML5 video stream
     const downloadUrl = `/api/media/download/${file.id}`;
     const isAndroid = /Android/i.test(navigator.userAgent);
     
@@ -487,7 +817,7 @@ function toggleDirectPlay() {
     if (isAndroid) {
       androidTipHtml = `
         <div style="position: absolute; bottom: 10px; left: 10px; right: 10px; background: rgba(0,0,0,0.8); padding: 8px 12px; border-radius: 6px; font-size: 0.75rem; color: #fbbf24; text-align: center; z-index: 10;">
-          💡 Android Chrome doesn't play raw iPhone HEVC directly. If playback fails, click <strong>"Download Original"</strong> below to watch it instantly in your gallery!
+          💡 Android WebView doesn't support raw HEVC play. Use "Download" below if playback stalls!
         </div>
       `;
     }
@@ -503,9 +833,8 @@ function toggleDirectPlay() {
     `;
     lightboxPlayDirect.innerHTML = '<i data-lucide="refresh-cw"></i><span>Google Player</span>';
   } else {
-    // Switch back to Google player
     loadLightboxMedia(file);
-    lightboxPlayDirect.innerHTML = '<i data-lucide="video"></i><span>Direct Play</span>';
+    lightboxPlayDirect.innerHTML = '<i data-lucide="play-circle"></i><span>Direct Play</span>';
   }
   lucide.createIcons();
 }
@@ -513,12 +842,9 @@ function toggleDirectPlay() {
 // Lightbox: Inject image or video/iframe element
 function loadLightboxMedia(file) {
   const isVideo = file.mimeType.startsWith('video/');
-  lightboxContent.innerHTML = '<div class="spinner"></div>'; // Loading indicator
+  lightboxContent.innerHTML = '<div class="spinner"></div>'; 
 
   if (isVideo) {
-    // For HEVC/H.265 videos and standard iOS formats, we embed the Google Drive Preview Player.
-    // It automatically transcodes to browser-supported H.264 streams on-the-fly.
-    // This is 100% reliable across all browsers (Chrome, Android, Edge) for iOS mov/mp4 videos.
     const embedUrl = `https://drive.google.com/file/d/${file.id}/preview`;
     
     lightboxContent.innerHTML = `
@@ -527,7 +853,6 @@ function loadLightboxMedia(file) {
       </div>
     `;
   } else {
-    // For photos (including HEIC), we fetch our high-resolution proxy preview (JPEG).
     const previewUrl = `/api/media/preview/${file.id}`;
     
     const img = new Image();
@@ -538,16 +863,17 @@ function loadLightboxMedia(file) {
       lightboxContent.appendChild(img);
     };
     img.onerror = () => {
-      lightboxContent.innerHTML = `<p class="error-msg active">Failed to load preview. Please use the Download button below.</p>`;
+      lightboxContent.innerHTML = `<p class="error-msg active">Failed to load preview. Please use the Download button above.</p>`;
     };
   }
 }
 
 // Lightbox: Close modal
+// Switch focus/overflow locks back
 function closeLightbox() {
   lightbox.classList.remove('active');
-  document.body.style.overflow = ''; // Unlock scroll
-  lightboxContent.innerHTML = ''; // Clear content to stop playing video
+  document.body.style.overflow = ''; 
+  lightboxContent.innerHTML = ''; 
   state.currentMediaIndex = -1;
   isDirectPlayActive = false;
   lightboxPlayDirect.classList.add('hidden');
@@ -560,7 +886,6 @@ function navigateLightbox(direction) {
   let newIndex = state.currentMediaIndex + direction;
   const length = state.filteredMedia.length;
   
-  // Wrap around index
   if (newIndex < 0) newIndex = length - 1;
   if (newIndex >= length) newIndex = 0;
   
@@ -570,9 +895,9 @@ function navigateLightbox(direction) {
 // Admin Operations
 async function renameFile(fileId, currentName) {
   const newName = prompt('Enter new file name:', currentName);
-  if (newName === null) return; // Cancelled
+  if (newName === null) return; 
   if (newName.trim() === '') {
-    alert('File name cannot be empty.');
+    showToast('File name cannot be empty.', 'error');
     return;
   }
   
@@ -586,14 +911,15 @@ async function renameFile(fileId, currentName) {
     const data = await response.json();
     
     if (response.ok && data.success) {
+      showToast('File renamed successfully!', 'success');
       await loadMedia();
     } else {
-      alert(data.error || 'Failed to rename file.');
+      showToast(data.error || 'Failed to rename file.', 'error');
       showLoader(false);
     }
   } catch (err) {
     console.error(err);
-    alert('Error connecting to server.');
+    showToast('Error connecting to server.', 'error');
     showLoader(false);
   }
 }
@@ -610,14 +936,15 @@ async function deleteFile(fileId, name) {
     const data = await response.json();
     
     if (response.ok && data.success) {
+      showToast('File deleted successfully.', 'success');
       await loadMedia();
     } else {
-      alert(data.error || 'Failed to delete file.');
+      showToast(data.error || 'Failed to delete file.', 'error');
       showLoader(false);
     }
   } catch (err) {
     console.error(err);
-    alert('Error connecting to server.');
+    showToast('Error connecting to server.', 'error');
     showLoader(false);
   }
 }
