@@ -595,38 +595,41 @@ app.get('/api/auth/download-stats', requireAuth, (req, res) => {
   });
 });
 
-// Instamojo API Helper Methods
-function createInstamojoPayment(amount, purpose, redirectUrl, webhookUrl) {
-  return new Promise((resolve, reject) => {
-    const apiKey = process.env.INSTAMOJO_API_KEY;
-    const authToken = process.env.INSTAMOJO_AUTH_TOKEN;
-    const isSandbox = process.env.INSTAMOJO_SANDBOX === 'true';
+// Instamojo API Helper Methods (v2 OAuth2)
+let instamojoAccessToken = null;
+let instamojoTokenExpiry = 0;
 
-    if (!apiKey || !authToken) {
-      return reject(new Error('Instamojo API Key or Auth Token is not configured.'));
+function getInstamojoAccessToken() {
+  return new Promise((resolve, reject) => {
+    const clientId = process.env.INSTAMOJO_API_KEY;
+    const clientSecret = process.env.INSTAMOJO_AUTH_TOKEN;
+
+    if (!clientId || !clientSecret) {
+      return reject(new Error('Instamojo Client ID or Client Secret is not configured.'));
     }
 
-    const host = isSandbox ? 'test.instamojo.com' : 'www.instamojo.com';
-    
+    // Return cached token if still valid (with 60s buffer)
+    if (instamojoAccessToken && Date.now() < instamojoTokenExpiry - 60000) {
+      return resolve(instamojoAccessToken);
+    }
+
     const postData = querystring.stringify({
-      amount: amount.toString(),
-      purpose: purpose,
-      redirect_url: redirectUrl,
-      webhook: webhookUrl,
-      allow_repeated_payments: 'false'
+      grant_type: 'client_credentials',
+      client_id: clientId,
+      client_secret: clientSecret
     });
 
     const options = {
-      hostname: host,
-      path: '/api/1.1/payment-requests/',
+      hostname: 'api.instamojo.com',
+      path: '/oauth2/token/',
       method: 'POST',
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(postData),
-        'X-Api-Key': apiKey,
-        'X-Auth-Token': authToken
+        'Content-Length': Buffer.byteLength(postData)
       }
     };
+
+    console.log('[Instamojo] Requesting OAuth2 access token...');
 
     const req = https.request(options, (res) => {
       let data = '';
@@ -634,13 +637,17 @@ function createInstamojoPayment(amount, purpose, redirectUrl, webhookUrl) {
       res.on('end', () => {
         try {
           const parsed = JSON.parse(data);
-          if (parsed.success && parsed.payment_request) {
-            resolve(parsed.payment_request);
+          if (parsed.access_token) {
+            instamojoAccessToken = parsed.access_token;
+            instamojoTokenExpiry = Date.now() + (parsed.expires_in || 36000) * 1000;
+            console.log('[Instamojo] OAuth2 access token obtained successfully.');
+            resolve(instamojoAccessToken);
           } else {
-            reject(new Error(parsed.message ? JSON.stringify(parsed.message) : data));
+            console.error('[Instamojo] OAuth2 token response:', data);
+            reject(new Error(parsed.error || 'Failed to obtain access token'));
           }
         } catch (e) {
-          reject(new Error('Failed to parse response: ' + data));
+          reject(new Error('Failed to parse OAuth2 response: ' + data));
         }
       });
     });
@@ -651,47 +658,99 @@ function createInstamojoPayment(amount, purpose, redirectUrl, webhookUrl) {
   });
 }
 
-function verifyPaymentRequestOnInstamojo(paymentRequestId) {
-  return new Promise((resolve, reject) => {
-    const apiKey = process.env.INSTAMOJO_API_KEY;
-    const authToken = process.env.INSTAMOJO_AUTH_TOKEN;
-    const isSandbox = process.env.INSTAMOJO_SANDBOX === 'true';
+function createInstamojoPayment(amount, purpose, redirectUrl, webhookUrl) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const token = await getInstamojoAccessToken();
 
-    if (!apiKey || !authToken) {
-      return reject(new Error('Instamojo API Key or Auth Token is not configured.'));
-    }
-
-    const host = isSandbox ? 'test.instamojo.com' : 'www.instamojo.com';
-
-    const options = {
-      hostname: host,
-      path: `/api/1.1/payment-requests/${paymentRequestId}/`,
-      method: 'GET',
-      headers: {
-        'X-Api-Key': apiKey,
-        'X-Auth-Token': authToken
-      }
-    };
-
-    const req = https.request(options, (res) => {
-      let data = '';
-      res.on('data', chunk => data += chunk);
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.success && parsed.payment_request) {
-            resolve(parsed.payment_request);
-          } else {
-            reject(new Error(parsed.message ? JSON.stringify(parsed.message) : data));
-          }
-        } catch (e) {
-          reject(new Error('Failed to parse details: ' + data));
-        }
+      const postData = JSON.stringify({
+        amount: amount.toString(),
+        purpose: purpose,
+        redirect_url: redirectUrl,
+        webhook: webhookUrl,
+        allow_repeated_payments: false
       });
-    });
 
-    req.on('error', reject);
-    req.end();
+      const options = {
+        hostname: 'api.instamojo.com',
+        path: '/v2/payment_requests/',
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(postData),
+          'Authorization': `Bearer ${token}`
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.id && parsed.longurl) {
+              resolve(parsed);
+            } else if (parsed.payment_request) {
+              resolve(parsed.payment_request);
+            } else if (parsed.success === false) {
+              reject(new Error(parsed.message ? JSON.stringify(parsed.message) : data));
+            } else {
+              // v2 API returns the payment request directly
+              resolve(parsed);
+            }
+          } catch (e) {
+            reject(new Error('Failed to parse response: ' + data));
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.write(postData);
+      req.end();
+    } catch (err) {
+      reject(err);
+    }
+  });
+}
+
+function verifyPaymentRequestOnInstamojo(paymentRequestId) {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const token = await getInstamojoAccessToken();
+
+      const options = {
+        hostname: 'api.instamojo.com',
+        path: `/v2/payment_requests/${paymentRequestId}/`,
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      };
+
+      const req = https.request(options, (res) => {
+        let data = '';
+        res.on('data', chunk => data += chunk);
+        res.on('end', () => {
+          try {
+            const parsed = JSON.parse(data);
+            if (parsed.id) {
+              resolve(parsed);
+            } else if (parsed.success && parsed.payment_request) {
+              resolve(parsed.payment_request);
+            } else {
+              reject(new Error(parsed.message ? JSON.stringify(parsed.message) : data));
+            }
+          } catch (e) {
+            reject(new Error('Failed to parse details: ' + data));
+          }
+        });
+      });
+
+      req.on('error', reject);
+      req.end();
+    } catch (err) {
+      reject(err);
+    }
   });
 }
 
