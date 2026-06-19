@@ -2628,3 +2628,315 @@ i {
     font-size: 2rem;
   }
 }
+
+/* -------------------------------------------------------------
+/* 🧑‍🤝‍🧑 Google Photos-style "People" Feature Styles
+/* ------------------------------------------------------------- */
+
+.people-section {
+  margin-top: 1.5rem;
+  margin-bottom: 1.5rem;
+  padding: 1.2rem;
+  background: rgba(17, 24, 39, 0.45);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--border-light);
+  border-radius: 20px;
+  animation: cardIn 0.5s ease-out;
+}
+
+.people-section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
+
+.people-section-header h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--text-bright);
+}
+
+.text-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-primary);
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.2rem 0.5rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.text-btn:hover {
+  color: var(--accent-secondary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Face Scan progress */
+.people-scan-container {
+  margin-bottom: 1rem;
+  padding: 0.8rem;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.scan-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  margin-bottom: 0.4rem;
+}
+
+.scan-spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 2px solid rgba(255,255,255,0.2);
+  border-top-color: var(--accent-primary);
+  border-radius: 50%;
+  animation: spin 1s infinite linear;
+  margin-right: 0.3rem;
+}
+
+.scan-progress-bar-wrapper {
+  height: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 99px;
+  overflow: hidden;
+}
+
+.scan-progress-bar {
+  height: 100%;
+  background: var(--gradient-primary);
+  border-radius: 99px;
+  width: 0%;
+  transition: width 0.3s ease;
+}
+
+/* Face Slider container */
+.people-slider-container {
+  overflow-x: auto;
+  scrollbar-width: none; /* Hide scrollbar Firefox */
+  -webkit-overflow-scrolling: touch;
+}
+
+.people-slider-container::-webkit-scrollbar {
+  display: none; /* Hide scrollbar Chrome/Safari */
+}
+
+.people-slider {
+  display: flex;
+  gap: 1.5rem;
+  padding: 0.5rem 0;
+}
+
+/* Person circle card */
+.person-circle-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  width: 84px;
+  min-width: 84px;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+}
+
+.person-circle-card:hover {
+  transform: translateY(-4px);
+}
+
+.person-avatar-wrapper {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  padding: 3px;
+  background: var(--border-light);
+  transition: background 0.3s ease;
+}
+
+.person-circle-card:hover .person-avatar-wrapper {
+  background: var(--gradient-primary);
+}
+
+.person-avatar {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--bg-card);
+  border: 2px solid var(--bg-deep);
+}
+
+.person-avatar-placeholder {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+}
+
+.person-name {
+  margin-top: 0.5rem;
+  font-size: 0.75rem;
+  color: var(--text-main);
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-weight: 500;
+}
+
+/* Sub-bar for selected person filtering */
+.selected-person-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.8rem 1.5rem;
+  margin-bottom: 1.5rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border-active);
+  background: rgba(108, 99, 255, 0.1);
+  box-shadow: 0 0 15px rgba(108, 99, 255, 0.15);
+  animation: fadeIn 0.3s ease-out;
+}
+
+.selected-person-info {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.person-tag-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-primary);
+  background-size: cover;
+  background-position: center;
+  display: inline-block;
+}
+
+#selected-person-name {
+  font-weight: 600;
+  color: var(--text-bright);
+}
+
+/* People Browser Modal Grid */
+.people-browser-card {
+  width: 90%;
+  max-width: 800px;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 24px;
+  padding: 2.5rem !important;
+}
+
+.people-browser-grid-wrapper {
+  overflow-y: auto;
+  flex-grow: 1;
+  margin-top: 1.5rem;
+  padding-right: 0.5rem;
+}
+
+.people-browser-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 1.5rem;
+}
+
+.browser-person-card {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-light);
+  border-radius: 16px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  user-select: none;
+}
+
+.browser-person-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--border-active);
+  transform: translateY(-2px);
+}
+
+.browser-person-card.dragging {
+  opacity: 0.4;
+  border: 2px dashed var(--accent-primary);
+}
+
+.browser-person-card.drag-over {
+  border-color: var(--accent-secondary);
+  background: rgba(255, 94, 122, 0.1);
+  transform: scale(1.05);
+}
+
+.browser-person-card .person-avatar-wrapper {
+  width: 84px;
+  height: 84px;
+}
+
+.browser-person-card .photo-count-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: var(--gradient-primary);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  padding: 0.15rem 0.4rem;
+  border-radius: 9999px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+}
+
+.browser-person-name-input {
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--accent-primary);
+  border-radius: 6px;
+  color: var(--text-bright);
+  font-size: 0.8rem;
+  text-align: center;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.2rem 0.4rem;
+}
+
+.browser-person-card .merge-btn {
+  margin-top: 0.6rem;
+  font-size: 0.7rem;
+  padding: 0.2rem 0.6rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 99px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.browser-person-card .merge-btn:hover {
+  background: var(--accent-secondary);
+  border-color: transparent;
+  color: white;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

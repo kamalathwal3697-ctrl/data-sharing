@@ -23,9 +23,10 @@ let state = {
     videosLeft: 3
   },
   filters: {
-    format: 'all',     // 'all' | 'photo' | 'video' | 'favorite'
+    format: 'all',     // 'all' | 'photo' | 'video' | 'favorite' | 'people'
     category: 'all',   // 'all' | folder name
-    search: ''
+    search: '',
+    person: null       // { id, name, photoIds[], faceThumb }
   }
 };
 
@@ -45,6 +46,23 @@ const clearSearchBtn = document.getElementById('clear-search');
 const categoryTabsContainer = document.getElementById('category-tabs');
 const formatFilters = document.querySelectorAll('.format-filters .filter-tab');
 const refreshBtn = document.getElementById('refresh-btn');
+
+// People Feature Elements
+const peopleSection = document.getElementById('people-section');
+const peopleSlider = document.getElementById('people-slider');
+const viewAllPeopleBtn = document.getElementById('view-all-people-btn');
+const peopleScanContainer = document.getElementById('people-scan-container');
+const peopleScanProgress = document.getElementById('people-scan-progress');
+const peopleScanProgressBar = document.getElementById('people-scan-progress-bar');
+const selectedPersonBar = document.getElementById('selected-person-bar');
+const selectedPersonAvatar = document.getElementById('selected-person-avatar');
+const selectedPersonName = document.getElementById('selected-person-name');
+const clearPersonFilter = document.getElementById('clear-person-filter');
+
+const peopleBrowserModal = document.getElementById('people-browser-modal');
+const closePeopleBrowserBtn = document.getElementById('close-people-browser-btn');
+const peopleBrowserGrid = document.getElementById('people-browser-grid');
+
 const logoutBtn = document.getElementById('logout-btn');
 
 // Header Profile Dropdown Elements
@@ -241,12 +259,24 @@ function setupEventListeners() {
     applyFilters();
   });
 
-  // Format Filter Clicks (All Media, Photos, Videos, Favorites)
+  // Format Filter Clicks (All Media, Photos, Videos, Favorites, People)
   formatFilters.forEach(tab => {
     tab.addEventListener('click', (e) => {
+      const filterValue = tab.getAttribute('data-filter');
+      
+      if (filterValue === 'people') {
+        openPeopleBrowserModal();
+        return;
+      }
+
       formatFilters.forEach(t => t.classList.remove('active'));
       tab.classList.add('active');
-      state.filters.format = tab.getAttribute('data-filter');
+      state.filters.format = filterValue;
+      
+      // Clear active person filter when switching format tabs
+      state.filters.person = null;
+      selectedPersonBar.classList.add('hidden');
+      
       applyFilters();
     });
   });
@@ -394,9 +424,31 @@ function setupEventListeners() {
     adminSettingsModal.classList.add('active');
     loadSubscribersApprovals();
   });
-
   closeSettingsBtn.addEventListener('click', () => {
     adminSettingsModal.classList.remove('active');
+  });
+
+  // People Feature Event Listeners
+  viewAllPeopleBtn.addEventListener('click', openPeopleBrowserModal);
+  closePeopleBrowserBtn.addEventListener('click', () => {
+    peopleBrowserModal.classList.remove('active');
+  });
+
+  clearPersonFilter.addEventListener('click', () => {
+    state.filters.person = null;
+    selectedPersonBar.classList.add('hidden');
+    
+    // Reset format tab to All Media
+    formatFilters.forEach(t => {
+      if (t.getAttribute('data-filter') === 'all') {
+        t.classList.add('active');
+      } else {
+        t.classList.remove('active');
+      }
+    });
+    state.filters.format = 'all';
+    
+    applyFilters();
   });
 }
 
@@ -504,6 +556,7 @@ async function loadMedia() {
     applyFilters();
     checkDownloadLimits();
     populateScrollerCollageWall();
+    initPeopleFeature();
   } catch (err) {
     console.error('Error loading media:', err);
     mediaGrid.innerHTML = `<p class="error-msg active" style="grid-column: 1/-1; text-align: center;">Error connecting to Google Drive. Check configuration.</p>`;
@@ -587,9 +640,13 @@ function buildCategoryTabs() {
 
 // Filter files list based on format filters, category filter, and search text
 function applyFilters() {
-  const { format, category, search } = state.filters;
+  const { format, category, search, person } = state.filters;
   
   state.filteredMedia = state.allMedia.filter(item => {
+    if (person && !person.photoIds.includes(item.id)) {
+      return false;
+    }
+    
     const isVideo = checkIsVideo(item);
     if (format === 'photo' && isVideo) return false;
     if (format === 'video' && !isVideo) return false;
@@ -1332,4 +1389,281 @@ async function deleteFile(fileId, name) {
     showToast('Error connecting to server.', 'error');
     showLoader(false);
   }
+}
+
+// -------------------------------------------------------------
+// 🧑‍🤝‍🧑 Google Photos-style "People" Feature Frontend Helpers
+// -------------------------------------------------------------
+
+// Active person selection tag to filter
+let selectedPerson = null;
+
+// Initialize face recognition scanning and UI
+async function initPeopleFeature() {
+  if (typeof PeopleEngine === 'undefined') {
+    console.error('[People Feature] PeopleEngine not loaded.');
+    return;
+  }
+
+  // Get current clusters first
+  const initialPeople = await PeopleEngine.getPeople();
+  renderPeopleRow(initialPeople);
+
+  // Start background scanner
+  PeopleEngine.startScanning(
+    state.allMedia,
+    // Scan progress callback
+    (progress) => {
+      if (progress.isScanning && progress.total > 0) {
+        peopleScanContainer.classList.remove('hidden');
+        const pct = Math.round((progress.scanned / progress.total) * 100);
+        peopleScanProgress.textContent = `${pct}% (${progress.scanned}/${progress.total})`;
+        peopleScanProgressBar.style.width = `${pct}%`;
+      } else {
+        peopleScanContainer.classList.add('hidden');
+      }
+    },
+    // People updated callback
+    (updatedPeople) => {
+      renderPeopleRow(updatedPeople);
+      if (peopleBrowserModal.classList.contains('active')) {
+        renderPeopleBrowserGrid(updatedPeople);
+      }
+    }
+  );
+}
+
+// Render horizontal strip of circular face avatars
+function renderPeopleRow(people) {
+  peopleSlider.innerHTML = '';
+
+  if (!people || people.length === 0) {
+    peopleSection.classList.add('hidden');
+    return;
+  }
+
+  peopleSection.classList.remove('hidden');
+
+  // Show top 15 people in the quick slider
+  const displayedPeople = people.slice(0, 15);
+
+  displayedPeople.forEach(person => {
+    const card = document.createElement('div');
+    card.className = 'person-circle-card';
+    card.title = `Show all photos of ${person.name}`;
+
+    let avatarHtml = '';
+    if (person.faceThumb) {
+      avatarHtml = `<img src="${person.faceThumb}" class="person-avatar" alt="${person.name}">`;
+    } else {
+      avatarHtml = `
+        <div class="person-avatar-placeholder">
+          <i data-lucide="user"></i>
+        </div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="person-avatar-wrapper">
+        ${avatarHtml}
+      </div>
+      <span class="person-name">${person.name}</span>
+    `;
+
+    card.addEventListener('click', () => {
+      selectPersonFilter(person);
+    });
+
+    peopleSlider.appendChild(card);
+  });
+
+  lucide.createIcons();
+}
+
+// Select a person and apply the filter tag
+function selectPersonFilter(person) {
+  state.filters.person = person;
+  
+  // Update Selected Person filter sub-bar
+  selectedPersonName.textContent = `Showing photos of ${person.name}`;
+  if (person.faceThumb) {
+    selectedPersonAvatar.style.backgroundImage = `url(${person.faceThumb})`;
+    selectedPersonAvatar.style.display = 'inline-block';
+  } else {
+    selectedPersonAvatar.style.display = 'none';
+  }
+  
+  selectedPersonBar.classList.remove('hidden');
+
+  // Deactivate all format filters to indicate custom filtering
+  formatFilters.forEach(t => t.classList.remove('active'));
+
+  // Close browser modal if open
+  peopleBrowserModal.classList.remove('active');
+
+  // Apply filters
+  applyFilters();
+
+  // Scroll to grid anchor
+  document.getElementById('media-section-anchor').scrollIntoView({ behavior: 'smooth' });
+}
+
+// Open the large modal containing all detected people
+async function openPeopleBrowserModal() {
+  peopleBrowserModal.classList.add('active');
+  const people = await PeopleEngine.getPeople();
+  renderPeopleBrowserGrid(people);
+}
+
+// Render grid elements inside the People Browser Modal
+function renderPeopleBrowserGrid(people) {
+  peopleBrowserGrid.innerHTML = '';
+
+  if (!people || people.length === 0) {
+    peopleBrowserGrid.innerHTML = `
+      <div class="empty-state-inner" style="grid-column: 1/-1; text-align: center; color: var(--text-muted); padding: 3rem 0;">
+        <i data-lucide="scan-face" style="width: 48px; height: 48px; margin-bottom: 1rem;"></i>
+        <p>No faces analyzed yet. Please wait for the background analyzer to finish scanning photos.</p>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  people.forEach(person => {
+    const card = document.createElement('div');
+    card.className = 'browser-person-card';
+    card.setAttribute('draggable', 'true');
+    card.setAttribute('data-id', person.id);
+
+    let avatarHtml = '';
+    if (person.faceThumb) {
+      avatarHtml = `<img src="${person.faceThumb}" class="person-avatar" alt="${person.name}">`;
+    } else {
+      avatarHtml = `
+        <div class="person-avatar-placeholder">
+          <i data-lucide="user"></i>
+        </div>
+      `;
+    }
+
+    card.innerHTML = `
+      <div class="photo-count-badge">${person.photoIds.length}</div>
+      <div class="person-avatar-wrapper">
+        ${avatarHtml}
+      </div>
+      <span class="person-name" style="margin-top:0.6rem; font-weight:600;" title="Double click to rename">${person.name}</span>
+      <button class="merge-btn" title="Merge this group into another">Merge</button>
+    `;
+
+    // Click to filter by this person
+    card.addEventListener('click', (e) => {
+      // Don't trigger if clicking merge button or double-clicking name
+      if (e.target.classList.contains('merge-btn') || e.target.tagName === 'INPUT') return;
+      selectPersonFilter(person);
+    });
+
+    // Double click to rename
+    const nameEl = card.querySelector('.person-name');
+    nameEl.addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      const currentName = person.name;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'browser-person-name-input';
+      input.value = currentName;
+      
+      card.replaceChild(input, nameEl);
+      input.focus();
+      input.select();
+
+      const saveRename = async () => {
+        const val = input.value.trim();
+        if (val && val !== currentName) {
+          await PeopleEngine.renamePerson(person.id, val);
+          showToast(`Renamed person to "${val}"`, 'success');
+        } else {
+          card.replaceChild(nameEl, input);
+        }
+      };
+
+      input.addEventListener('blur', saveRename);
+      input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          saveRename();
+        } else if (e.key === 'Escape') {
+          card.replaceChild(nameEl, input);
+        }
+      });
+    });
+
+    // Merge Button click
+    card.querySelector('.merge-btn').addEventListener('click', async (e) => {
+      e.stopPropagation();
+      const otherPeople = people.filter(p => p.id !== person.id);
+      if (otherPeople.length === 0) {
+        showToast('No other people clusters to merge with.', 'info');
+        return;
+      }
+
+      const optionsText = otherPeople.map((p, idx) => `${idx + 1}. ${p.name} (${p.photoIds.length} photos)`).join('\n');
+      const selection = prompt(
+        `Merge all photos of "${person.name}" into another group:\n\n${optionsText}\n\nEnter the number of the target person to merge into:`
+      );
+
+      if (selection === null) return;
+      const num = parseInt(selection);
+      if (isNaN(num) || num < 1 || num > otherPeople.length) {
+        showToast('Invalid selection.', 'error');
+        return;
+      }
+
+      const targetPerson = otherPeople[num - 1];
+      const confirmMsg = `Merge "${person.name}" into "${targetPerson.name}"?\nThis action cannot be undone.`;
+      if (confirm(confirmMsg)) {
+        await PeopleEngine.mergePeople(targetPerson.id, person.id);
+        showToast(`Merged groups successfully!`, 'success');
+      }
+    });
+
+    // Drag and Drop implementation
+    card.addEventListener('dragstart', (e) => {
+      e.dataTransfer.setData('text/plain', person.id);
+      card.classList.add('dragging');
+    });
+
+    card.addEventListener('dragend', () => {
+      card.classList.remove('dragging');
+    });
+
+    card.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const draggingId = document.querySelector('.browser-person-card.dragging')?.getAttribute('data-id');
+      if (draggingId && draggingId !== person.id) {
+        card.classList.add('drag-over');
+      }
+    });
+
+    card.addEventListener('dragleave', () => {
+      card.classList.remove('drag-over');
+    });
+
+    card.addEventListener('drop', async (e) => {
+      e.preventDefault();
+      card.classList.remove('drag-over');
+      const sourceId = e.dataTransfer.getData('text/plain');
+      
+      if (sourceId && sourceId !== person.id) {
+        const sourcePerson = people.find(p => p.id === sourceId);
+        if (sourcePerson && confirm(`Merge all photos of "${sourcePerson.name}" into "${person.name}"?`)) {
+          await PeopleEngine.mergePeople(person.id, sourceId);
+          showToast(`Merged groups successfully!`, 'success');
+        }
+      }
+    });
+
+    peopleBrowserGrid.appendChild(card);
+  });
+
+  lucide.createIcons();
 }

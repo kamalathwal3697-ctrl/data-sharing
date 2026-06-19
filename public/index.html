@@ -464,6 +464,10 @@
             <i data-lucide="heart" class="heart-icon-filled"></i>
             <span>Favorites</span>
           </button>
+          <button class="filter-tab" data-filter="people" id="people-filter-tab">
+            <i data-lucide="users"></i>
+            <span>People</span>
+          </button>
         </div>
         
         <!-- Day Categories tab list -->
@@ -472,6 +476,42 @@
         </div>
       </div>
     </section>
+
+    <!-- People Row Section (Google Photos Style circular previews) -->
+    <section class="people-section hidden" id="people-section">
+      <div class="people-section-header">
+        <h3 class="section-title-sm"><i data-lucide="users"></i> People in Photos</h3>
+        <button id="view-all-people-btn" class="text-btn">View All</button>
+      </div>
+      
+      <!-- Progress Bar for Scanning -->
+      <div id="people-scan-container" class="people-scan-container hidden">
+        <div class="scan-info">
+          <span><i class="scan-spinner"></i> Analyzing faces...</span>
+          <span id="people-scan-progress">0%</span>
+        </div>
+        <div class="scan-progress-bar-wrapper">
+          <div id="people-scan-progress-bar" class="scan-progress-bar" style="width: 0%;"></div>
+        </div>
+      </div>
+
+      <div class="people-slider-container">
+        <div class="people-slider" id="people-slider">
+          <!-- Circular face avatars injected via JS -->
+        </div>
+      </div>
+    </section>
+    
+    <!-- Sub-bar for selected person filtering (under controls) -->
+    <div id="selected-person-bar" class="selected-person-bar glass-card hidden">
+      <div class="selected-person-info">
+        <span class="person-tag-avatar" id="selected-person-avatar"></span>
+        <span id="selected-person-name">Filtering photos of John</span>
+      </div>
+      <button id="clear-person-filter" class="icon-btn circle-btn">
+        <i data-lucide="x"></i>
+      </button>
+    </div>
 
     <!-- Parent Free Downloads counter indicator (Hidden for Admins) -->
     <div id="download-limit-bar" class="download-limit-bar glass-card hidden">
@@ -666,6 +706,26 @@
     </div>
   </div>
 
+  <!-- People Browser Modal Overlay -->
+  <div id="people-browser-modal" class="auth-modal-overlay">
+    <div class="glass-card people-browser-card">
+      <button id="close-people-browser-btn" class="close-auth-btn" title="Close">
+        <i data-lucide="x"></i>
+      </button>
+      
+      <div class="settings-header">
+        <h2>People in Photos</h2>
+        <p>AI automatically grouped photos of the same people. Click to view their photos. Double click name to edit. Drag and drop one face onto another to merge them.</p>
+      </div>
+
+      <div class="people-browser-grid-wrapper">
+        <div id="people-browser-grid" class="people-browser-grid">
+          <!-- Populated by JS -->
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Lightbox Viewer Modal -->
   <div id="lightbox" class="lightbox-modal">
     <div class="lightbox-overlay"></div>
@@ -725,6 +785,8 @@
   <!-- Toast Notification Container -->
   <div id="toast-container" class="toast-container"></div>
 
+  <script src="https://cdn.jsdelivr.net/npm/@vladmandic/human/dist/human.js"></script>
+  <script src="/js/people.js"></script>
   <script src="/js/app.js"></script>
 </body>
 </html>
